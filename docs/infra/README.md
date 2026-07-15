@@ -1,37 +1,34 @@
-# Infraestructura — Users API (GeeksCastle)
+# Infra del producto — Users API
 
-Documentación de arquitectura y modelo de datos de **este** reto: NestJS Users API + **Firestore**, con IaC Terraform lite en la raíz del repo.
+Acá está el modelo de datos y los diagramas C4 de **este** reto: Nest + Firestore.  
+El Terraform (código) vive en la raíz: [`infra/`](../../infra/README.md).
 
-> Si ves menciones a Pokémon/PostgreSQL en algún archivo histórico, no aplican a este producto.
+> Si en algún archivo viejo ves Pokémon o Postgres, ignóralo: no es este producto.
 
-## Qué hay acá
+## Qué hay aquí
 
-| Documento | Contenido |
-|-----------|-----------|
-| [Base de datos (Firestore)](./base-de-datos.md) | Colecciones `users` y `emails` |
-| [C4 y flujos](./c4-y-flujos.md) | Contexto, contenedores y secuencia de create/get |
+| Doc | De qué va |
+|-----|-----------|
+| [Base de datos](./base-de-datos.md) | Colecciones `users` y `emails` |
+| [C4 y flujos](./c4-y-flujos.md) | Contexto, contenedores y secuencias create/get |
 
-## Terraform (IaC)
+## Cómo corre en local
 
-El código Terraform vive en **`infra/`** (raíz del monorepo), no en `docs/infra/`.
-
-Ver [`../../infra/README.md`](../../infra/README.md): `fmt`, `validate`, `plan`. La demo evaluable usa el **Firestore Emulator**.
-
-## Runtime local (resumen)
-
-```
-Cliente HTTP  →  Nest API (:3000)  →  Firestore Emulator (:8080)
+```text
+Tu cliente HTTP  →  Nest (:3000)  →  Firestore Emulator (:8080)
 ```
 
-- Contrato HTTP: Swagger [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
-- Setup y curls: [README raíz](../../README.md)
-- Variables: `.env.example` (`FIREBASE_PROJECT_ID`, `FIRESTORE_EMULATOR_HOST`)
-- ADRs: [docs/adr/](../adr/)
+- Swagger: http://localhost:3000/api/docs  
+- Setup y curls: [README raíz](../../README.md)  
+- Variables: `.env.example`  
+- Decisiones: [ADRs](../adr/) · explicación: [wiki](../wiki/README.md)
 
-## Tests / CI
+La demo evaluable usa el **emulador**. No hace falta `terraform apply` para corregir el reto.
 
-| Capa | Comando |
-|------|---------|
-| API unit + coverage | `cd apps/api && npm run test:cov` |
+## Tests / CI (atajo)
+
+| Qué | Comando |
+|-----|---------|
+| Cobertura | `cd apps/api && npm run test:cov` |
 | Smoke create→password | `cd apps/api && npm run test:smoke` |
-| CI | `.github/workflows/ci.yml` — build/`test:cov` + Terraform validate |
+| CI | build + `test:cov` + Terraform validate |

@@ -1,60 +1,72 @@
-# Documentación — Reto GeeksCastle (Users API)
+# Documentación — Reto GeeksCastle
 
-## Por audiencia
-
-### Evaluador
-
-1. [README raíz](../README.md) — setup, arquitectura, curls, tests y cómo lo desplegaría en GCP
-2. **OpenAPI** — con la API arriba: [http://localhost:3000/api/docs](http://localhost:3000/api/docs) (schemas + respuestas 201/400/404/409/429)
-3. [Requisitos e historias US-01 – US-22](./requirements/reto.md) — **deadline: 2026-07-16 12:00 CDMX**
-4. [Infra producto (Firestore + C4)](./infra/README.md) — modelo `users`/`emails`, flujos
-5. [ADRs](./adr/) — decisiones vinculantes (incl. Nx + Terraform lite)
-6. Terraform: [`infra/README.md`](../infra/README.md) (raíz del repo)
-7. Enunciado e historias: [`requirements/reto.md`](./requirements/reto.md) (PDF local: `Challenge -Desarrollador Backend 2026.pdf`, no versionado)
-
-### Desarrollador
-
-- **Wiki (onboarding + arquitectura con analogías):** [`docs/wiki/`](./wiki/README.md) — empieza por [camino del desarrollador](./wiki/camino-del-desarrollador.md)
-- Historias detalladas (copiar a GitHub Issues): [`requirements/reto.md`](./requirements/reto.md)
-- ADRs antes de implementar features transversales
-- **Finalize await ≠ `@EventsHandler`:** [`architecture/finalize-await-vs-events-handler.md`](./architecture/finalize-await-vs-events-handler.md)
-- Infra de producto: [`docs/infra/`](./infra/README.md)
-- OpenSpec: carpeta `openspec/`
+Aquí viven la wiki, los ADR, los requisitos y los diagramas.  
+Si acabas de aterrizar, empieza por el [README de la raíz](../README.md) para levantar la API; vuelve acá cuando quieras el “por qué”.
 
 ---
 
-## Decisiones de arquitectura (ADR)
+## Si estás revisando la entrega
+
+Orden que te ahorra vueltas:
+
+1. **[Wiki](./wiki/README.md)** — explicación clara (analogías, onboarding, decisiones, Pub/Sub).
+2. **[ADRs](./adr/)** — decisiones cortas que mandan el diseño.
+3. README raíz — setup, curls, panorama GCP.
+4. Swagger (`/api/docs`) — contrato HTTP con la API arriba.
+5. [Historias US](./requirements/reto.md) — criterios US-01…US-22.
+
+**Wiki, primeros tres pasos:** [camino del desarrollador](./wiki/camino-del-desarrollador.md) → [arquitectura](./wiki/arquitectura.md) → [toma de decisiones](./wiki/toma-de-decisiones.md).
+
+**ADR estrella:** [0002 — Hexagonal + CQRS](./adr/0002-backend-hexagonal-cqrs.md).
+
+Si wiki y ADR no coinciden, **gana el ADR**.
+
+---
+
+## Si vas a tocar código
+
+- Arranque y curls: [README raíz](../README.md)
+- Cómo sumar un feature sin romper capas: [wiki → camino del desarrollador](./wiki/camino-del-desarrollador.md)
+- Password / evento: [finalize await vs EventsHandler](./architecture/finalize-await-vs-events-handler.md)
+- Datos y diagramas: [docs/infra/](./infra/README.md)
+- Specs: carpeta `openspec/` en la raíz
+
+---
+
+## ADRs (mapa rápido)
 
 | ADR | Tema |
 |-----|------|
-| [0001](./adr/0001-estructura-proyecto-nestjs.md) | Estructura NestJS / repo (enmienda Nx) |
-| [0002](./adr/0002-backend-hexagonal-cqrs.md) | Hexagonal + CQRS + evento UserCreated |
-| [0003](./adr/0003-firebase-firestore-emulator.md) | Firestore Admin SDK + emulator |
-| [0004](./adr/0004-ci-github-actions.md) | CI build + test:cov ≥ 80 % |
-| [0005](./adr/0005-seguridad-passwords-y-api.md) | Passwords, validación, límites |
-| [0006](./adr/0006-nx-workspace-lite.md) | Nx workspace lite (`apps/api`) |
-| [0007](./adr/0007-terraform-firebase-lite.md) | Terraform lite Firebase |
+| [0001](./adr/0001-estructura-proyecto-nestjs.md) | Estructura Nest / repo |
+| [0002](./adr/0002-backend-hexagonal-cqrs.md) | Hexagonal + CQRS + finalize vs evento |
+| [0003](./adr/0003-firebase-firestore-emulator.md) | Firestore + emulator |
+| [0004](./adr/0004-ci-github-actions.md) | CI |
+| [0005](./adr/0005-seguridad-passwords-y-api.md) | Passwords, Helmet, throttle |
+| [0006](./adr/0006-nx-workspace-lite.md) | Nx lite |
+| [0007](./adr/0007-terraform-firebase-lite.md) | Terraform lite |
+
+Terraform en código: [`infra/README.md`](../infra/README.md) (raíz del repo).
 
 ---
 
-## Estructura de `docs/`
+## Qué hay en `docs/`
 
 ```
 docs/
-├── README.md              ← estás acá
-├── wiki/                  ← guía narrativa (hexagonal, CQRS, onboarding, Pub/Sub)
-├── requirements/reto.md   ← historias US + mapa
-├── adr/                   ← ADR-0001 … 0007
-├── architecture/          ← diseño profundo (finalize vs EventsHandler)
-├── infra/                 ← Firestore model + C4 (este reto)
-└── reviews/               ← code reviews
+├── README.md          ← estás acá
+├── wiki/              ← guía en tono humano
+├── adr/               ← decisiones vinculantes
+├── architecture/      ← diseño profundo del password/evento
+├── infra/             ← Firestore + C4
+├── requirements/      ← historias US
+└── reviews/           ← code reviews internos
 ```
 
 ---
 
-## GitHub Projects (operación)
+## Project board
 
-Estados recomendados: `Backlog` → `Ready` → `In Progress` → `In Review` → `Done`.
+Estados típicos: `Backlog` → `Ready` → `In Progress` → `In Review` → `Done`.
 
-Una historia = un Issue con título `US-XX — …` y body = criterios de aceptación del doc de requisitos.  
-Al implementar con OpenSpec, mover la tarjeta y cerrar el Issue al archivar el change.
+Una historia = un Issue `US-XX — …` con los criterios de `reto.md`.  
+Si usas OpenSpec, mueve la tarjeta y cierra el Issue al archivar el change.

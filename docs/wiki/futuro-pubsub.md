@@ -1,62 +1,56 @@
-# Futuro: Pub/Sub (sin romper lo que ya funciona)
+# Futuro: Pub/Sub (sin romper lo que ya anda)
 
-Hoy el aviso “se creó un usuario” vive **dentro** del proceso Nest.  
-En GCP, ese mismo aviso puede viajar por **Pub/Sub**. Aquí está la idea y el camino seguro.
+Hoy el aviso “se creó un usuario” vive **dentro** de Nest.  
+En GCP ese mismo aviso puede ir por **Pub/Sub**. Acá va la idea y el camino seguro.
 
-Cómo lo desplegaría: [README — sección GCP](../../README.md#cómo-lo-desplegaría-en-gcp).
-
----
-
-## 1. Megáfono en la cocina frente a una carta por correo
-
-| Hoy (local / Nest) | Mañana (GCP) |
-|--------------------|--------------|
-| El cocinero grita: “mesa lista” (`EventBus`) | Manda una **carta** a otra sucursal (`Pub/Sub` + Function o worker) |
-| Quien oye está en el mismo local (`UserCreatedAuditHandler`) | Quien oye puede estar en otro servicio (logs, correo, métricas) |
-| Si nadie oye el grito, el aviso se pierde | La carta se **reintenta**; quien la lea debe poder procesarla **más de una vez** sin romper nada |
-
-En ambos casos el mensaje dice **“pasó X”**, no **“vuelve a hacer el trabajo principal”**.
-
-El trabajo principal (crear usuario + password) termina **antes** de avisar.
+Cómo lo desplegaría: [README — GCP](../../README.md#10-cómo-lo-desplegaría-en-gcp-solo-diseño).
 
 ---
 
-## 2. Lo que el consumidor de Pub/Sub no debe hacer
+## 1. Megáfono en la cocina vs carta por correo
+
+| Hoy | Mañana |
+|-----|--------|
+| Gritas en la cocina: “mesa lista” (`EventBus`) | Mandas una **carta** a otra sucursal (Pub/Sub + Function) |
+| Quien oye está en el mismo local (audit handler) | Puede ser otro servicio (logs, mail, métricas) |
+| Si nadie oye, se pierde | La carta se **reintenta**; hay que poder leerla **dos veces** sin romper nada |
+
+El mensaje dice **“pasó X”**, no **“vuelve a cocinar el plato”**.
+
+El plato (crear usuario + password) se termina **antes** de avisar.
+
+---
+
+## 2. Lo que el consumidor no debe hacer
 
 ```text
 ❌ Regenerar el password
-❌ Volver a hashear “por si acaso”
-❌ Borrar y recrear al usuario
-❌ Creerse el único que escribe passwordHash
+❌ Hashear “por si acaso”
+❌ Borrar y recrear al user
+❌ Creerse dueño único de passwordHash
 ```
 
-Eso reintroduce ciclos y contradice el [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md) y el documento de finalize.
+Eso te mete ciclos y choca con el [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md).
 
-**Sí puede:**
-
-- Escribir un log de auditoría, una métrica o un registro en BigQuery.
-- Enviar un correo de bienvenida (sin filtrar el password en claro: hoy **no** devolvemos el password plano).
-- Disparar otro flujo (asignar rol, índice de búsqueda) **si** tolera ejecutarse más de una vez.
+**Sí puede:** log de auditoría, métrica, BigQuery, mail de bienvenida (sin filtrar password en claro — hoy **no** devolvemos el plano), otros flujos **si** toleran repetirse.
 
 ---
 
-## 3. Secuencia que queremos en producción
+## 3. Orden en producción
 
 ```text
-1. Transacción en Firestore (emails/{email} + users/{id})
+1. Transacción Firestore (emails + users)
 2. await FinalizeMissingPasswordService   ← único que escribe el password
-3. Responder 201 al cliente
-4. Publicar user.created en Pub/Sub        ← cuando el estado ya está listo
-5. Worker / Cloud Function consume (puede llegar N veces) → solo efectos secundarios de observación
+3. Responder 201
+4. Publicar user.created en Pub/Sub
+5. Worker consume (puede llegar N veces) → solo observar / notificar
 ```
 
-Piensa en el **boleto del cine**: primero te confirman la butaca; **después** mandas la notificación de “disfruta la película”. Si la notificación llega dos veces, no te cambian de asiento.
+Como el cine: primero te confirman la butaca; **después** el push de “disfruta la peli”. Si el push llega dos veces, no te mudan de asiento.
 
 ---
 
 ## 4. Mensaje (borrador)
-
-Algo mínimo, alineado con el evento de dominio de hoy:
 
 ```json
 {
@@ -70,64 +64,58 @@ Algo mínimo, alineado con el evento de dominio de hoy:
 
 | Campo | Para qué |
 |-------|----------|
-| `version` | Poder evolucionar sin romper consumidores viejos |
-| `userId` | Clave para no procesar dos veces lo mismo |
-| `passwordWasMissing` | Telemetría o texto del correo; **no** para volver a generar password |
+| `version` | Evolucionar sin romper lectores viejos |
+| `userId` | No procesar dos veces lo mismo |
+| `passwordWasMissing` | Telemetría / copy del mail; **nunca** para regenerar |
 
-Guarda “ya procesé este `messageId`” (o `userId` + tipo + ventana) en Firestore o Redis. Un reenvío de Pub/Sub no debería spamear correos si el producto no lo quiere.
-
----
-
-## 5. Cómo encaja con hexagonal
-
-No tiramos la arquitectura por la ventana:
-
-| Pieza | Rol futuro |
-|-------|------------|
-| Puerto tipo `DomainEventPublisher` | La aplicación publica `UserCreated` sin saber de Pub/Sub |
-| Adaptador `PubSubUserCreatedPublisher` | Infraestructura: topic de GCP |
-| Adaptador Nest (EventBus) | Local y demos |
-| Handler de auditoría en Nest | Prototipo; en producción se apaga o convive un tiempo |
-
-La aplicación sigue orquestando. La infraestructura habla con Google.
+Guarda “ya procesé este mensaje” en Firestore o Redis. Un reenvío no debería spamear mails.
 
 ---
 
-## 6. Pasos razonables (en ese orden)
+## 5. Encaje hexagonal
 
-1. **Mantener estable el contrato actual:** finalize con await + auditoría que solo escribe log (ya está).
-2. **Extraer un puerto de publicación** detrás del create (mismo contenido de mensaje).
-3. **Adaptador Pub/Sub** detrás de una variable (`EVENT_BUS=nest|pubsub`).
-4. **Worker idempotente** (Cloud Function o un Cloud Run pequeño).
-5. Apagar los efectos dentro del proceso Nest cuando el worker sea estable.
-6. (Opcional) **Outbox** en Firestore si necesitas “al menos una vez” en la misma transacción del create.
+No tiramos la arquitectura:
 
-El paso 6 no es del primer día: es complejidad que el reto no pide implementar.
+| Pieza | Rol |
+|-------|-----|
+| Puerto tipo `DomainEventPublisher` | Application publica sin saber de Pub/Sub |
+| Adaptador Pub/Sub | Infra habla con GCP |
+| Adaptador Nest | Local / demos |
+| Audit handler actual | Prototipo; en prod se apaga o convive un rato |
 
 ---
 
-## 7. Relación con Cloud Run
+## 6. Pasos (en orden)
+
+1. Dejar quieto el contrato actual (ya está).
+2. Sacar un puerto de publicación detrás del create.
+3. Adaptador Pub/Sub detrás de una env (`EVENT_BUS=nest|pubsub`).
+4. Worker idempotente.
+5. Apagar efectos in-process cuando el worker esté estable.
+6. (Opcional) Outbox — no es día uno; el reto no lo pide.
+
+---
+
+## 7. Con Cloud Run
 
 ```text
-Internet → Cloud Run (API Nest) → Firestore
-                     │
-                     └─► Pub/Sub → Function / worker
+Internet → Cloud Run (Nest) → Firestore
+                 └─► Pub/Sub → Function / worker
 ```
 
-- Meter **todo** Nest en una Cloud Function suele salir caro (arranque en frío y otro modelo de ejecución).
-- Una Function **sí** encaja bien como consumidor ligero del topic.
+Nest entero en Cloud Functions suele salir caro. Una Function **sí** encaja como oyente liviano.
 
-El detalle operativo está en el README raíz, sección GCP.
+Detalle: README, sección GCP.
 
 ---
 
-## 8. Antes de activar Pub/Sub
+## 8. Checklist antes de prenderlo
 
-- [ ] El `201` sigue saliendo **después** del finalize.
-- [ ] No se publica si create o finalize fallaron.
+- [ ] El `201` sigue después del finalize.
+- [ ] No publicas si create/finalize fallaron.
 - [ ] El consumidor no escribe `passwordHash`.
-- [ ] Hay plan para reintentos y mensajes que fallan siempre (DLQ).
-- [ ] IAM mínimo: la API publica; el worker suscribe.
-- [ ] Hay un test de contrato del mensaje (versión del schema).
+- [ ] Hay plan de reintentos / DLQ.
+- [ ] IAM mínimo (API publica, worker suscribe).
+- [ ] Test de contrato del mensaje.
 
 Volver a: [arquitectura](./arquitectura.md) · [camino del desarrollador](./camino-del-desarrollador.md).

@@ -1,163 +1,157 @@
 # Arquitectura: hexagonal + CQRS
 
-Qué usamos, cómo aparece en este repositorio y por qué no metemos todo en un `UsersService` gigante.
+Qué usamos, cómo se ve en *este* repo y por qué no metemos todo en un `UsersService` enorme.
 
-Referencias: [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md) y [finalize await vs EventsHandler](../architecture/finalize-await-vs-events-handler.md).
+Si quieres la decisión formal: [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md).  
+Si te trabas con el password y el evento: [finalize await vs EventsHandler](../architecture/finalize-await-vs-events-handler.md).
 
 ---
 
-## 1. Hexagonal: el restaurante
+## 1. Hexagonal: piensa en un restaurante
 
-Imagina un **restaurante**:
+| En el restaurante | En el código | En `users` |
+|-------------------|--------------|------------|
+| Reglas de la casa (qué pedido vale) | **Dominio** | `User`, errores, evento, puertos |
+| Quien arma el pedido de punta a punta | **Aplicación** | Commands, queries, handlers, finalize del password |
+| La puerta a la calle / delivery | **Infra / adaptadores** | Controller HTTP, Firestore, bcrypt |
+| El trato “necesito guardar clientes” | **Puerto** | `UserRepositoryPort` |
+| El almacén de verdad | **Adaptador** | `FirestoreUserRepository` |
 
-| En el restaurante | En el código | En el módulo `users` |
-|-------------------|--------------|----------------------|
-| Las reglas de la casa (qué pedido es válido) | **Dominio** | `User`, errores, `UserCreatedEvent`, puertos |
-| Quien toma el pedido y lo gestiona hasta el final | **Aplicación** | Commands, queries, handlers, `FinalizeMissingPasswordService` |
-| La puerta a la calle, el delivery, el WhatsApp | **Infraestructura / adaptadores** | Controller HTTP, Firestore, bcrypt |
-| El acuerdo “necesito guardar clientes” | **Puerto** | `UserRepositoryPort` |
-| El almacén real | **Adaptador** | `FirestoreUserRepository` |
+### La idea, sin humo
 
-### Idea central
+El **dominio no tiene por qué enterarse** si la petición llegó por `curl`, Postman o un bot. Tampoco si los datos están en Firestore, Postgres o un arreglo en memoria.
 
-El **dominio no debería saber** si la petición llegó por `curl`, Postman o un bot. Tampoco debería saber si los datos están en Firestore, Postgres o un arreglo en memoria.
-
-Eso es **inversión de dependencias**: la aplicación habla con **interfaces** (puertos). Las implementaciones (adaptadores) se conectan en el módulo de Nest.
+Eso se llama **inversión de dependencias**: la aplicación habla con **interfaces** (puertos). Las implementaciones (adaptadores) se enchufan en el módulo de Nest.
 
 ```text
         ┌─────────────────────────────────┐
         │         Dominio (núcleo)         │
         │   User · ports · events · errors │
         └────────────▲────────────────────┘
-                     │ solo depende del dominio
+                     │ solo mira al dominio
         ┌────────────┴────────────────────┐
         │         Aplicación               │
         │  CreateUserHandler · ListUsers…  │
         └────────────▲────────────────────┘
-                     │ recibe puertos por inyección
+                     │ recibe puertos
    ┌─────────────────┴──────────────────┐
    │          Infraestructura            │
    │  HTTP · Firestore · bcrypt · crypto │
    └────────────────────────────────────┘
 ```
 
-### Analogía del enchufe
+### Enchufe y electrodoméstico
 
-El puerto es el **enchufe de la pared**. El adaptador es el **aparato** que enchufas.
+El puerto es el **enchufe**. El adaptador es lo que enchufas.
 
-Puedes cambiar el microondas (pasar de Firestore a otra base) sin reescribir la receta (el handler), mientras el enchufe (la interfaz) sea el mismo.
+Puedes cambiar de Firestore a otra base sin reescribir la receta (el handler), mientras el enchufe (la interfaz) sea el mismo.
 
-En los tests enchufamos un sustituto barato: `InMemoryUserRepository` en `test-doubles/`. No hace falta encender el emulador.
+En los tests enchufamos algo barato: `InMemoryUserRepository` en `test-doubles/`. No hace falta prender el emulador.
 
-### Qué rompe el hexágono
+### Qué rompe esto
 
-| Antipatrón | Por qué molesta |
-|------------|-----------------|
-| Importar `firebase-admin` en `domain/` o `application/` | El núcleo queda atado a un proveedor |
-| Meter reglas de password en el controller | Es cocinar en la mesa del cliente |
-| Un `UsersService` que crea, lista, hashea y habla con Firebase | Para probarlo hay que levantar casi todo el sistema |
+| Si haces esto… | Duele porque… |
+|----------------|---------------|
+| Metes `firebase-admin` en `domain/` o `application/` | El núcleo queda casado con un vendor |
+| Pones reglas de password en el controller | Es cocinar en la mesa del cliente |
+| Armas un `UsersService` que hace de todo | Para probarlo levantas medio sistema |
 
 ---
 
-## 2. CQRS: dos ventanillas
+## 2. CQRS: dos filas distintas
 
-**CQRS** consiste en separar lo que **modifica** el sistema de lo que solo **consulta**.
+**CQRS** = separar lo que **cambia** algo de lo que solo **pregunta**.
 
-En un banco no usas la misma fila para depositar y para preguntar el saldo, aunque las dos miren la misma cuenta.
+En el banco no usas la misma ventanilla para depositar y para ver el saldo.
 
-| Tipo | Pregunta | ¿Modifica algo? | En esta API |
-|------|----------|-----------------|-------------|
-| **Command** | “Haz esto” | Sí | `CreateUserCommand` → `CreateUserHandler` |
+| Tipo | Pregunta | ¿Cambia algo? | Aquí |
+|------|----------|---------------|------|
+| **Command** | “Haz esto” | Sí | `CreateUserCommand` |
 | **Query** | “¿Cómo está?” | No | `GetUserByIdQuery`, `ListUsersQuery` |
 
-Otra imagen: pedir un plato **sí** mueve inventario; leer la carta **no** debería vaciar la nevera.
+Pedir un plato mueve inventario. Leer la carta no debería vaciar la nevera.
 
-En Nest usamos `CommandBus` y `QueryBus`. El controller casi no decide: valida el DTO y despacha.
+En Nest: `CommandBus` y `QueryBus`. El controller casi no decide: valida el DTO y despacha.
 
 ```text
-POST /users       →  CreateUserDto  →  CommandBus  →  CreateUserHandler
-GET  /users       →                  →  QueryBus    →  ListUsersHandler
-GET  /users/:id                      →  QueryBus    →  GetUserByIdHandler
+POST /users       →  CommandBus  →  CreateUserHandler
+GET  /users       →  QueryBus    →  ListUsersHandler
+GET  /users/:id   →  QueryBus    →  GetUserByIdHandler
 ```
 
-### Por qué un archivo por pieza
+### Un archivo por pieza
 
-La convención del equipo es: cada command, query y handler en **su propio archivo**.
+Es la convención del equipo: cada command, query y handler en **su archivo**.
 
-- La revisión se limita a un archivo concreto.
+- El review se acota.
 - Cada caso de uso tiene su test.
-- Evitamos el archivo monstruo donde cabe “todo users”.
+- Evitas el monstruo “todo-users.ts”.
 
-El costo es más archivos y algo de repetición. La ganancia es que, cuando el módulo crece, no se vuelve un nudo imposible.
+Sí, hay más archivos. A cambio, cuando el módulo crece no se vuelve un nudo.
 
 ---
 
-## 3. Cómo se ve en *este* repositorio
+## 3. Cómo se ve aquí
 
 ```text
 apps/api/src/modules/users/
 ├── domain/           ← TypeScript puro
-├── application/      ← CQRS, servicios, handler de auditoría
+├── application/      ← CQRS + servicios + audit
 ├── infrastructure/   ← Firestore, crypto, HTTP
-├── test-doubles/     ← dobles solo para tests
-└── users.module.ts   ← cableado Nest (puertos → adaptadores)
+├── test-doubles/     ← fakes de test
+└── users.module.ts   ← cableado Nest
 ```
 
-### Flujo de create (el más importante)
+### Create sin password (el flujo que más importa)
 
-1. HTTP valida el body (`CreateUserDto`).
-2. El handler crea el usuario (transacción: reserva del email + documento).
-3. Si no venía password → se hace **await** de `FinalizeMissingPasswordService` (único camino que escribe el hash).
-4. Se publica `UserCreatedEvent` como **aviso** (hoy solo deja un log de auditoría).
-5. Se responde `201` cuando el documento ya tiene sentido de negocio (`hasPassword` coherente).
+1. HTTP valida el body.
+2. El handler crea el usuario (transacción: reserva del email + doc).
+3. Si faltaba password → **await** a `FinalizeMissingPasswordService` (único sitio que escribe el hash).
+4. Se publica `UserCreatedEvent` como **aviso** (hoy: un log).
+5. Recién ahí el `201`, cuando `hasPassword` ya cuadra.
 
 ```text
-Cliente                API                         Firestore
-  │                     │                              │
-  │  POST /users        │                              │
-  │────────────────────►│  create (tx)                 │
-  │                     │─────────────────────────────►│
-  │                     │  await finalize password     │
-  │                     │─────────────────────────────►│
-  │                     │  publish UserCreated (audit) │
-  │  201 + hasPassword  │                              │
-  │◄────────────────────│                              │
+Cliente → API: POST /users
+API → Firestore: create (tx)
+API → Firestore: await finalize password
+API: publish UserCreated (audit)
+Cliente ← 201 + hasPassword
 ```
 
 ### Lecturas
 
-- `ListUsersQuery` → `list(limit)` con tope (`USERS_LIST_MAX = 100`).
-- `GetUserByIdQuery` → `findById` o error de dominio `NOT_FOUND`.
+- Listado: topado a 100 (`USERS_LIST_MAX`).
+- Get by id: o el user, o `NOT_FOUND`.
 
 Ninguna query toca passwords ni borra usuarios.
 
-### Evento de dominio ≠ trabajo asíncrono real
+### El “evento” de hoy ≠ un job de verdad
 
-Hoy el aviso vive **dentro del mismo proceso** Nest (`EventBus`). Es el altavoz de la cocina: “mesa 4 lista”.
+Hoy el aviso vive **en el mismo proceso** Nest. Es el altavoz de la cocina: “mesa 4 lista”.
 
-Mañana ese mismo aviso puede salir por **Pub/Sub** hacia otro servicio: [futuro-pubsub.md](./futuro-pubsub.md).
+Mañana puede salir por Pub/Sub: [futuro-pubsub.md](./futuro-pubsub.md).
 
-**Regla práctica:** lo que el cliente ve en el `201` tiene que estar **ya guardado** en el camino con `await`. El `@EventsHandler` **no** es donde se genera el password.
+**Regla de oro:** lo que ves en el `201` ya tiene que estar guardado. El `@EventsHandler` **no** genera el password.
 
 ---
 
 ## 4. Cada capa en una frase
 
-| Capa | Frase útil |
-|------|------------|
+| Capa | Frase |
+|------|--------|
 | Dominio | Qué es un usuario y qué prometemos. |
 | Aplicación | En qué orden hacemos las cosas. |
-| Infraestructura | Con qué herramientas concretas (Firebase, bcrypt, HTTP). |
-| Controller | Traduce HTTP a comando o consulta, y listo. |
+| Infra | Con qué herramientas (Firebase, bcrypt, HTTP). |
+| Controller | De HTTP a comando/consulta, y listo. |
 
 ---
 
-## 5. Antes de hacer merge, repasa esto
+## 5. Antes del merge
 
-- [ ] ¿Hay reglas de negocio en el controller? Sácalas.
-- [ ] ¿Se coló Firebase en `application` o `domain`? No hagas merge.
+- [ ] ¿Reglas de negocio en el controller? Sácalas.
+- [ ] ¿Firebase en application/domain? No merges.
 - [ ] ¿Escribe? Command. ¿Solo lee? Query.
-- [ ] ¿El `2xx` depende de un `@EventsHandler` asíncrono? Rediseña (ver doc de finalize).
-- [ ] ¿El handler tiene test con puertos mockeados o in-memory? Si no, agrégalo.
+- [ ] ¿El `2xx` depende de un EventsHandler async? Rediseña ([doc](../architecture/finalize-await-vs-events-handler.md)).
+- [ ] ¿Hay test del handler con puertos falsos? Si no, agrégalo.
 
 Sigue con: [toma de decisiones](./toma-de-decisiones.md) · [camino del desarrollador](./camino-del-desarrollador.md).

@@ -1,34 +1,33 @@
-# Wiki — Users API (GeeksCastle)
+# Wiki — Users API
 
-Documentación pensada para entender cómo está armada la API y cómo trabajar en el repositorio sin tener que adivinar.
+Esto es la guía “en humano” del repo: cómo está armada la API y cómo trabajar sin adivinar.
 
-No sustituye a los [ADRs](../adr/) (decisiones cortas y obligatorias) ni al [README](../../README.md) (cómo levantarla).
+No reemplaza a los [ADRs](../adr/) (ahí están las decisiones que mandan) ni al [README](../../README.md) (ahí está cómo levantarla).
 
-## Por dónde empezar
+## Leer en este orden
 
-| # | Documento | Léelo si… |
-|---|-----------|-----------|
+| # | Documento | Cuando te sirve |
+|---|-----------|-----------------|
 | 1 | [Camino del desarrollador](./camino-del-desarrollador.md) | Acabas de llegar o vas a tocar código mañana |
-| 2 | [Arquitectura (hexagonal + CQRS)](./arquitectura.md) | Quieres entender por qué hay tantas carpetas |
-| 3 | [Toma de decisiones](./toma-de-decisiones.md) | No tienes claro cuándo escribir un ADR o abrir un OpenSpec |
-| 4 | [Futuro Pub/Sub](./futuro-pubsub.md) | Quieres ver cómo sacar los eventos de Nest sin romper el `201` |
+| 2 | [Arquitectura](./arquitectura.md) | Quieres entender el porqué de tantas carpetas |
+| 3 | [Toma de decisiones](./toma-de-decisiones.md) | No sabes si abrir un ADR o un OpenSpec |
+| 4 | [Futuro Pub/Sub](./futuro-pubsub.md) | Quieres ver cómo sacar los avisos a la nube |
 
-## Qué no encontrarás aquí
+## Qué no busques aquí
 
-- El contrato HTTP completo: está en Swagger (`/api/docs`) y en las historias de [`requirements/reto.md`](../requirements/reto.md).
-- Los reportes de code review: viven en [`docs/reviews/`](../reviews/).
-- Si la wiki y un **ADR aceptado** se contradicen, manda el ADR. Luego corregimos la wiki.
+- El contrato HTTP al milímetro → Swagger (`/api/docs`) o las historias en [`reto.md`](../requirements/reto.md).
+- Actas de review → [`docs/reviews/`](../reviews/).
+- Si choca con un **ADR aceptado**, manda el ADR y corregimos la wiki.
 
-## Visión general
+## Panorama en una mirada
 
 ```text
-HTTP (controller)  →  CommandBus / QueryBus  →  Handler  →  Puertos  →  Adaptadores (Firestore, bcrypt…)
+HTTP (controller)  →  CommandBus / QueryBus  →  Handler  →  Puertos  →  Adaptadores
                                                               │
-                                                    evento de dominio (aviso)
+                                                         aviso de dominio
                                                               ▼
-                                                 auditoría (log, hoy)
-                                                 Pub/Sub (mañana, misma idea)
+                                                    audit (hoy) · Pub/Sub (mañana)
 ```
 
-Modelo de datos y diagramas C4: [`docs/infra/`](../infra/README.md).  
-Por qué el password no se genera en el `@EventsHandler`: [`finalize-await-vs-events-handler.md`](../architecture/finalize-await-vs-events-handler.md).
+Datos y C4: [`docs/infra/`](../infra/README.md).  
+Por qué el password no se arma en el `@EventsHandler`: [ese doc](../architecture/finalize-await-vs-events-handler.md).

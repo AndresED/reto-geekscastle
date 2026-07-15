@@ -1,71 +1,70 @@
-# Por qué `FinalizeMissingPasswordService` (await) ≠ `@EventsHandler`
+# Por qué finalize con `await` ≠ `@EventsHandler`
 
-Documento de diseño para el reto GeeksCastle Users API.  
-Complementa [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md).
+Esta es la nota larga del diseño del password. Complementa el [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md).  
+Si quieres la versión corta con analogías: [wiki → arquitectura](../wiki/arquitectura.md).
 
 ---
 
-## 1. La pregunta que hay que poder contestar
+## 1. La pregunta que te van a hacer
 
-El PDF pide algo como:
+El PDF dice algo como:
 
 > Al insertar un usuario, si no hay password, un **evento** debe generar uno seguro, hashearlo y **actualizar** el registro.
 
-En NestJS mucha gente traduce eso literalmente a:
+En Nest mucha gente lo traduce literal así:
 
 ```ts
 await this.eventBus.publish(new UserCreatedEvent(...));
 // y un @EventsHandler que genera el password
 ```
 
-**Eso no garantiza** que el password esté persistido antes del `201 Created`.  
-La razón es una limitación (muy documentada) del `EventBus` de `@nestjs/cqrs`: **`publish` no espera a que terminen los `@EventsHandler`**.
+**Eso no te garantiza** que el password esté guardado antes del `201`.  
+El `EventBus` de `@nestjs/cqrs` **no espera** a que terminen los `@EventsHandler`.
 
-Por eso en este repo:
+Por eso acá lo partimos así:
 
-| Rol | Pieza | ¿Mutación de password? |
-|-----|--------|-------------------------|
-| Path síncrono del request | `FinalizeMissingPasswordService` + `await` | **Sí** (único path) |
-| Señal de dominio / audit | `UserCreatedEvent` + `@EventsHandler` | **No** (solo log) |
+| Rol | Pieza | ¿Escribe el password? |
+|-----|--------|------------------------|
+| Camino del request | `FinalizeMissingPasswordService` + `await` | **Sí** (único camino) |
+| Aviso de dominio / audit | `UserCreatedEvent` + `@EventsHandler` | **No** (solo log) |
 
 ---
 
-## 2. Cómo se comporta Nest `EventBus.publish`
+## 2. Qué hace Nest con `EventBus.publish`
 
-Pseudocódigo del modelo mental (simplificado):
+Modelo mental (simplificado):
 
 ```ts
-// Lo que muchos imaginan (FALSO):
+// Lo que mucha gente imagina (FALSO):
 async publish(event) {
   for (const handler of handlers) {
     await handler.handle(event); // ← Nest NO hace esto
   }
 }
 
-// Lo que ocurre en la práctica (verdadero a efectos del request):
+// Lo que importa para el request (más cerca de la verdad):
 async publish(event) {
   for (const handler of handlers) {
-    // Se invoca el handler, pero publish NO te permite
-    // “esperar a que el side-effect termine” como un await fiable
-    // del request path. El flujo del CommandHandler sigue.
+    // Arranca el handler, pero publish no te deja
+    // esperar el bcrypt + Firestore como parte fiable del request.
     void handler.handle(event);
   }
 }
 ```
 
-Consecuencias para el create:
+Qué implica en el create:
 
-1. El `CommandHandler` puede devolver el resultado HTTP **antes** de que el handler del evento haya escrito el hash.
-2. Un `await this.eventBus.publish(...)` **no convierte** el handler en parte del request path: el await solo espera a que Nest *despache* el evento, no a que tu lógica async de bcrypt + Firestore haya acabado.
-3. Si el handler falla después, el cliente **ya recibió 201** → mentira de contrato.
+1. El command puede devolver el HTTP **antes** de que el handler del evento haya escrito el hash.
+2. Poner `await` delante de `publish` **no** mete tu lógica async en el camino del request: solo espera el despacho, no el bcrypt + update.
+3. Si el handler falla después, el cliente **ya vio un 201** → el contrato miente.
 
-Referencias Nest: Event Bus / CQRS — los domain events vía `EventBus` son notificaciones in-process, no un pipeline síncrono de use-case.
+En Nest, estos eventos son avisos in-process, no un pipeline síncrono del caso de uso.
 
 ---
 
 ## 3. El antipatrón: mutar en el `@EventsHandler`
 
-### Código “parecería cumplir el PDF”
+### Código que “parece” cumplir el PDF
 
 ```ts
 // ❌ ANTIPATRÓN — no usar en este proyecto
@@ -227,7 +226,7 @@ Esto satisface:
 
 ## 5. Diagrama: malo vs bueno
 
-### Antipatron (mutación en EventsHandler)
+### Antipatrón (mutar en el EventsHandler)
 
 ```text
 POST /users
@@ -270,9 +269,9 @@ Cliente (contrato honesto)
 
 ---
 
-## 7. Ejemplo mental de interview (30 segundos)
+## 7. Cómo contarlo en entrevista (≈30 s)
 
-> “En Nest, `EventBus.publish` no espera a los `@EventsHandler`. Si generáramos el password ahí, podríamos responder 201 con `hasPassword: true` antes de que bcrypt y Firestore terminaran, o dejar un user sin hash si el handler falla. Por eso el path mutante es `FinalizeMissingPasswordService` con `await` dentro del `CreateUserHandler`. El `UserCreatedEvent` igual se publica, pero su handler solo hace audit. Así cumplimos el evento del reto **sin** mentirle al cliente ni doble-mutar.”
+> En Nest, `EventBus.publish` no espera a los `@EventsHandler`. Si generáramos el password ahí, podríamos mandar un 201 con `hasPassword: true` antes de que bcrypt y Firestore terminaran, o dejar un user sin hash si el handler falla. Por eso el único camino que escribe el password es `FinalizeMissingPasswordService` con `await` dentro del create. El `UserCreatedEvent` igual se publica, pero su handler solo hace audit. Cumplimos el “evento al insertar” sin mentirle al cliente ni escribir el hash dos veces.
 
 ---
 

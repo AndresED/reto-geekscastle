@@ -1,10 +1,13 @@
 # C4 y flujos — Users API
 
+Diagramas para ver el sistema de lejos y el create de cerca.  
+La prosa “humana” está en la [wiki](../wiki/README.md); las decisiones, en los [ADRs](../adr/).
+
 ## Contexto (C4 L1)
 
 ```mermaid
 flowchart LR
-  client[Evaluador / HTTP client]
+  client[Evaluador / cliente HTTP]
   api[Users API NestJS]
   fs[Firestore Emulator o GCP]
 
@@ -12,7 +15,7 @@ flowchart LR
   api -->|Admin SDK users + emails| fs
 ```
 
-Resumen: cliente → Nest API → Firestore.
+En corto: cliente → Nest → Firestore.
 
 ## Contenedores (C4 L2)
 
@@ -30,16 +33,16 @@ flowchart LR
   tf -.->|provisiona proyecto GCP| cloud
 ```
 
-No hay frontend web ni Postgres en el alcance del challenge. Terraform no configura el emulator local.
+No hay frontend web ni Postgres en el alcance del challenge. Terraform **no** arma el emulador local.
 
-## Componentes (módulo users)
+## Piezas del módulo `users`
 
-| Capa | Piezas |
-|------|--------|
-| HTTP | `UsersController`, DTO, throttle global (health `@SkipThrottle`) |
-| Application | `CreateUserHandler`, `ListUsersHandler`, `GetUserByIdHandler`, `FinalizeMissingPasswordService`, `UserCreatedAuditHandler` |
-| Domain | `User`, ports, `UserCreatedEvent`, errors |
-| Infrastructure | Firestore repo, bcrypt hasher, crypto password generator, Firebase provider |
+| Capa | Qué encontrarás |
+|------|-----------------|
+| HTTP | `UsersController`, DTOs, throttle global (`/health` exento) |
+| Application | Create / List / Get handlers, finalize del password, audit del evento |
+| Domain | `User`, ports, `UserCreatedEvent`, errores |
+| Infrastructure | Repo Firestore, bcrypt, generador crypto, provider Firebase |
 
 ## Secuencia: create sin password
 
@@ -60,7 +63,7 @@ sequenceDiagram
   CH->>Fin: execute(userId) await
   Fin->>Repo: updatePassword(hash)
   Repo->>FS: update users/{id}
-  CH-->>Audit: UserCreatedEvent (log only)
+  CH-->>Audit: UserCreatedEvent (solo log)
   CH-->>C: 201 hasPassword=true passwordGenerated=true
 ```
 
@@ -83,6 +86,7 @@ sequenceDiagram
 ## Referencias
 
 - [Base de datos](./base-de-datos.md)
-- [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md) — await finalize + evento señal
+- [ADR-0002](../adr/0002-backend-hexagonal-cqrs.md) — await finalize + evento como aviso
 - [ADR-0003](../adr/0003-firebase-firestore-emulator.md)
 - [Terraform lite](../../infra/README.md)
+- [Wiki arquitectura](../wiki/arquitectura.md)
