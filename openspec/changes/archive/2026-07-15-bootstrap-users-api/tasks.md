@@ -54,4 +54,4 @@
 
 ## 9. OpenSpec closeout
 
-- [ ] 9.1 Mark tasks complete as implemented; run `/opsx:archive` when ready to merge deltas into `openspec/specs/`
+- [x] 9.1 Mark tasks complete as implemented; run `/opsx:archive` when ready to merge deltas into `openspec/specs/`
