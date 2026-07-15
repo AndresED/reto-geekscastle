@@ -1,5 +1,7 @@
 # Reto GeeksCastle — Users API
 
+[![CI](https://github.com/AndresED/reto-geekscastle/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresED/reto-geekscastle/actions/workflows/ci.yml)
+
 API **NestJS** (hexagonal + **CQRS**) + **Firebase Firestore**, orquestada con **Nx lite**, IaC **Terraform lite**.  
 Al crear un usuario sin `password`, `FinalizeMissingPasswordService` genera uno seguro, lo hashea (bcrypt) y actualiza el documento **en el request path** (await). Luego se publica `UserCreatedEvent` como señal de dominio/audit — Nest `EventBus` no espera handlers (ADR-0002), así que la generación **no** vive en el `@EventsHandler`.
 
