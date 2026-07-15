@@ -84,6 +84,7 @@ describe('FirestoreUserRepository', () => {
 
   it('should wrap non-conflict transaction failures as UserPersistenceError', async () => {
     runTransaction.mockRejectedValue(new Error('offline'));
+    get.mockResolvedValue({ exists: false });
     const user = User.create({
       id: 'id-1',
       username: 'jane',
@@ -92,6 +93,54 @@ describe('FirestoreUserRepository', () => {
 
     await expect(repo.create(user)).rejects.toBeInstanceOf(
       UserPersistenceError,
+    );
+  });
+
+  it('should map wrapped conflict message to UserEmailConflictError', async () => {
+    runTransaction.mockRejectedValue(
+      new Error(
+        `Transaction failed: ${UserEmailConflictError.messagePrefix}jane@example.com`,
+      ),
+    );
+    const user = User.create({
+      id: 'id-1',
+      username: 'jane',
+      email: 'jane@example.com',
+    });
+
+    await expect(repo.create(user)).rejects.toBeInstanceOf(
+      UserEmailConflictError,
+    );
+  });
+
+  it('should map conflict via Error.cause chain', async () => {
+    const wrapped = new Error('aborted');
+    (wrapped as Error & { cause: Error }).cause = new UserEmailConflictError(
+      'jane@example.com',
+    );
+    runTransaction.mockRejectedValue(wrapped);
+    const user = User.create({
+      id: 'id-1',
+      username: 'jane',
+      email: 'jane@example.com',
+    });
+
+    await expect(repo.create(user)).rejects.toBeInstanceOf(
+      UserEmailConflictError,
+    );
+  });
+
+  it('should map conflict when claim exists after failed transaction', async () => {
+    runTransaction.mockRejectedValue(new Error('unknown abort'));
+    get.mockResolvedValue({ exists: true });
+    const user = User.create({
+      id: 'id-1',
+      username: 'jane',
+      email: 'jane@example.com',
+    });
+
+    await expect(repo.create(user)).rejects.toBeInstanceOf(
+      UserEmailConflictError,
     );
   });
 

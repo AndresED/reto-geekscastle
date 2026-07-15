@@ -3,17 +3,16 @@
 ## Contexto (C4 L1)
 
 ```mermaid
-C4Context
-  title Users API — contexto
-  Person(eval, "Evaluador / cliente HTTP", "curl o HTTP client")
-  System(api, "Users API", "NestJS hexagonal + CQRS")
-  System_Ext(fs, "Firestore", "Emulator o proyecto GCP")
+flowchart LR
+  client[Evaluador / HTTP client]
+  api[Users API NestJS]
+  fs[Firestore Emulator o GCP]
 
-  Rel(eval, api, "POST/GET /api/v1/users, GET /health")
-  Rel(api, fs, "Admin SDK — users + emails")
+  client -->|POST/GET /api/v1/users| api
+  api -->|Admin SDK users + emails| fs
 ```
 
-Si el diagrama C4 no renderiza, el resumen es: cliente → Nest API → Firestore.
+Resumen: cliente → Nest API → Firestore.
 
 ## Contenedores (C4 L2)
 
@@ -22,14 +21,16 @@ flowchart LR
   client[HTTP client]
   nest[apps/api NestJS]
   emu[Firestore Emulator]
+  cloud[Firestore cloud opcional]
   tf[infra/ Terraform opcional]
 
   client -->|api/v1| nest
   nest -->|FIRESTORE_EMULATOR_HOST| emu
-  tf -.->|provisiona cloud| emu
+  nest -.->|prod sin emulator| cloud
+  tf -.->|provisiona proyecto GCP| cloud
 ```
 
-No hay frontend web ni Postgres en el alcance del challenge.
+No hay frontend web ni Postgres en el alcance del challenge. Terraform no configura el emulator local.
 
 ## Componentes (módulo users)
 

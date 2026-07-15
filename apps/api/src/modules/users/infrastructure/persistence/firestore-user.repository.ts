@@ -56,9 +56,23 @@ export class FirestoreUserRepository implements UserRepositoryPort {
       });
       return user;
     } catch (error) {
-      if (error instanceof UserEmailConflictError) {
-        throw error;
+      const conflict = asEmailConflict(error, user.email);
+      if (conflict) {
+        throw conflict;
       }
+
+      // Race/wrap fallback: if claim exists after a failed create, surface 409 not 502.
+      try {
+        const claimSnap = await emailRef.get();
+        if (claimSnap.exists) {
+          throw new UserEmailConflictError(user.email);
+        }
+      } catch (probeError) {
+        if (probeError instanceof UserEmailConflictError) {
+          throw probeError;
+        }
+      }
+
       throw new UserPersistenceError(
         `Failed to create user: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -160,4 +174,27 @@ export class FirestoreUserRepository implements UserRepositoryPort {
       updatedAt: new Date(data.updatedAt),
     });
   }
+}
+
+/** Recover conflict through instanceof, message prefix, or Error.cause chain. */
+function asEmailConflict(
+  error: unknown,
+  email: string,
+): UserEmailConflictError | null {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current != null; depth++) {
+    if (current instanceof UserEmailConflictError) {
+      return current;
+    }
+    const message =
+      current instanceof Error ? current.message : String(current);
+    if (message.includes(UserEmailConflictError.messagePrefix)) {
+      return new UserEmailConflictError(email);
+    }
+    current =
+      current instanceof Error
+        ? (current as Error & { cause?: unknown }).cause
+        : undefined;
+  }
+  return null;
 }

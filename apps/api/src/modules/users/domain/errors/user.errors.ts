@@ -17,7 +17,9 @@ export class UserPersistenceError extends PersistenceDomainError {
 }
 
 export class UserEmailConflictError extends ConflictDomainError {
+  static readonly messagePrefix = 'Email already registered:';
+
   constructor(email: string) {
-    super(`Email already registered: ${email}`);
+    super(`${UserEmailConflictError.messagePrefix}${email}`);
   }
 }
