@@ -1,3 +1,4 @@
+import { User } from '../../../domain/entities/user.entity';
 import { UserCreatedEvent } from '../../../domain/events/user-created.event';
 import { PasswordGeneratorPort } from '../../../domain/ports/password-generator.port';
 import { PasswordHasherPort } from '../../../domain/ports/password-hasher.port';
@@ -25,7 +26,15 @@ describe('GeneratePasswordOnUserCreatedHandler', () => {
     );
   });
 
-  it('should generate hash and update when password missing', async () => {
+  it('should generate hash and update when password missing and user has none', async () => {
+    users.findById.mockResolvedValue(
+      User.create({
+        id: 'user-1',
+        username: 'jane',
+        email: 'jane@example.com',
+        passwordHash: null,
+      }),
+    );
     generator.generate.mockReturnValue('GeneratedPass1!');
     hasher.hash.mockResolvedValue('hash-value');
     users.updatePassword.mockResolvedValue({} as never);
@@ -41,8 +50,26 @@ describe('GeneratePasswordOnUserCreatedHandler', () => {
     );
   });
 
-  it('should no-op when password already present', async () => {
+  it('should no-op when passwordMissing is false', async () => {
     await handler.handle(new UserCreatedEvent('user-1', false));
+
+    expect(users.findById).not.toHaveBeenCalled();
+    expect(generator.generate).not.toHaveBeenCalled();
+    expect(users.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it('should no-op when user already has password hash (replay)', async () => {
+    users.findById.mockResolvedValue(
+      User.create({
+        id: 'user-1',
+        username: 'jane',
+        email: 'jane@example.com',
+        passwordHash: 'existing',
+        passwordGenerated: true,
+      }),
+    );
+
+    await handler.handle(new UserCreatedEvent('user-1', true));
 
     expect(generator.generate).not.toHaveBeenCalled();
     expect(hasher.hash).not.toHaveBeenCalled();

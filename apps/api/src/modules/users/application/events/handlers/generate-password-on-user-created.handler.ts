@@ -1,6 +1,7 @@
 import { Inject, Logger } from '@nestjs/common';
 import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
 import { UserCreatedEvent } from '../../../domain/events/user-created.event';
+import { UserNotFoundError } from '../../../domain/errors/user.errors';
 import {
   PASSWORD_GENERATOR_PORT,
   type PasswordGeneratorPort,
@@ -33,6 +34,14 @@ export class GeneratePasswordOnUserCreatedHandler
 
   async handle(event: UserCreatedEvent): Promise<void> {
     if (!event.passwordMissing) {
+      return;
+    }
+
+    const user = await this.users.findById(event.userId);
+    if (!user) {
+      throw new UserNotFoundError(event.userId);
+    }
+    if (user.hasPassword) {
       return;
     }
 

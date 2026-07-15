@@ -4,6 +4,15 @@
 
 Aceptado
 
+## Enmienda (2026-07-15 — await password on create)
+
+Nest `EventBus.publish` **no espera** a los `@EventsHandler`. Para cumplir el contrato HTTP:
+
+1. `CreateUserHandler` **await** `GeneratePasswordOnUserCreatedHandler.handle(event)` en el request path.
+2. Luego publica el evento (subscribers / replay); el handler es **idempotente** si ya hay `passwordHash`.
+3. Si generate/update falla tras el insert: el create **falla** (no `201`). Puede quedar un documento huérfano sin hash (sin compensación delete en v1).
+4. Create sin password solo responde tras reload con `hasPassword: true`.
+
 ## Fecha
 
 2026-07-15
@@ -44,10 +53,14 @@ Un solo use-case file (estilo Pokemon referencial) **no** cumple la convención 
 2. `CreateUserHandler`:
    - Si viene password: hashea y `repository.create` con hash.
    - Si no: `repository.create` sin password.
-   - Publica `UserCreatedEvent { userId, passwordMissing }`.
-3. `GeneratePasswordOnUserCreatedHandler` (nombre final libre si refleja intención):
+   - Construye `UserCreatedEvent { userId, passwordMissing }`.
+   - **Await** `GeneratePasswordOnUserCreatedHandler.handle(event)` (request path).
+   - Publica el evento en `EventBus` (fire-and-forget; idempotente al reentrar).
+   - Si faltaba password: `findById` y devolver usuario finalizado.
+3. `GeneratePasswordOnUserCreatedHandler`:
    - Si `!passwordMissing` → return.
-   - Si `passwordMissing` → generate → hash → `repository.updatePassword`.
+   - Si ya tiene hash → return (idempotencia).
+   - Si falta → generate → hash → `repository.updatePassword`.
 
 Esto cumple: “evento al insertar”, “generar password seguro”, “actualizar registro”.
 
