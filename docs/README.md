@@ -10,7 +10,7 @@ Si acabas de aterrizar, empieza por el [README de la raíz](../README.md) para l
 Orden que te ahorra vueltas:
 
 1. **[Wiki](./wiki/README.md)** — explicación clara (analogías, onboarding, decisiones, Pub/Sub).
-2. **[ADRs](./adr/)** — decisiones cortas que mandan el diseño.
+2. **[ADRs](./adr/README.md)** — índice + decisiones cortas que mandan el diseño.
 3. README raíz — setup, curls, panorama GCP.
 4. Swagger (`/api/docs`) — contrato HTTP con la API arriba.
 5. [Historias US](./requirements/reto.md) — criterios US-01…US-22.
@@ -34,6 +34,8 @@ Si wiki y ADR no coinciden, **gana el ADR**.
 ---
 
 ## ADRs (mapa rápido)
+
+Índice con descripción de cada una: **[adr/README.md](./adr/README.md)**.
 
 | ADR | Tema |
 |-----|------|

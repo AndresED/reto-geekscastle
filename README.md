@@ -21,7 +21,7 @@ El código te cuenta *qué* hace la API. La documentación te cuenta *por qué* 
 | Prioridad | Dónde | Para qué |
 |-----------|--------|----------|
 | 1 | **[Wiki](./docs/wiki/README.md)** | Explicación en lenguaje claro: hexagonal, CQRS, onboarding, Pub/Sub a futuro |
-| 2 | **[ADRs](./docs/adr/)** | Decisiones cortas y vinculantes (stack, capas, Firebase, seguridad, CI, Nx, Terraform) |
+| 2 | **[ADRs](./docs/adr/README.md)** | Índice y decisiones cortas (stack, capas, Firebase, seguridad, CI, Nx, Terraform) |
 | 3 | Este README | Levantar, probar con `curl` y panorama de entrega |
 | 4 | [Swagger](http://localhost:3000/api/docs) | Contrato HTTP cuando la API ya está arriba |
 | 5 | [Historias US](./docs/requirements/reto.md) | Criterios de aceptación US-01…US-22 |
@@ -278,6 +278,8 @@ Consumidor **idempotente** y sin tocar `passwordHash`. Hoy el prototipo es `User
 | [Futuro Pub/Sub](./docs/wiki/futuro-pubsub.md) | Evolución cloud sin romper el `201` |
 
 ### ADRs — decisiones que manda el diseño
+
+Índice con descripción breve de cada una: **[docs/adr/README.md](./docs/adr/README.md)**.
 
 | ADR | Tema |
 |-----|------|
