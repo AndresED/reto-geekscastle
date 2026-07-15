@@ -1,0 +1,86 @@
+# ADR-0005: Seguridad — passwords, validación y límites
+
+## Estado
+
+Aceptado
+
+## Fecha
+
+2026-07-15
+
+## Alcance
+
+Política de passwords, secretos, validación de entrada y límites conscientes del MVP del reto.
+
+## Contexto
+
+El reto pide password seguro y menciona bcrypt. En la práctica:
+
+- **Generar** password ≠ **hashear** password.
+- bcrypt (o argon2) hashea; la generación usa CSPRNG.
+
+La API del reto es demo sin auth de clientes; aun así se aplican controles razonables.
+
+## Elección final
+
+| Control | Decisión |
+|---------|----------|
+| Generación | `crypto.randomBytes` (Node) → charset alfanumérico + símbolos seguros; **longitud ≥ 16** |
+| Hash | **bcrypt** cost factor **10** (dev) / documentar 12 como evolución prod |
+| Persistencia | Solo `passwordHash`; nunca plaintext |
+| API response | Sin password ni hash; flags `passwordGenerated` / `hasPassword` ok |
+| Logs | Sin password, hash, ni PII innecesaria |
+| Validación | `ValidationPipe` `whitelist` + `forbidNonWhitelisted` + `transform` |
+| Email | Formato válido; normalización trim/lowercase en frontera |
+| Password cliente (si envía) | Longitud mínima **8**; máximo razonable (ej. 128) para evitar DoS de bcrypt |
+| Rate limit | `@nestjs/throttler` en `POST /users` (ej. 20/min) — recomendado |
+| AuthN/AuthZ API | **No** en v1 |
+| Helmet | Recomendado en `main.ts` |
+| Secretos | Solo env / secret manager; nunca repo |
+
+## Decisión
+
+### Política password generado
+
+- Longitud: **16**.
+- Charset: `A–Z`, `a–z`, `0–9`, y un set reducido de símbolos (`!@#$%^&*`).
+- Una sola generación por usuario en el event handler; idempotente si ya hay hash.
+
+### Password proveído por cliente
+
+- Se valida longitud; se hashea; `passwordGenerated=false`.
+- El event handler **no** regenera.
+
+### Superficie de ataque aceptada en demo
+
+| Límite | Riesgo | Mitigación futura |
+|--------|--------|-------------------|
+| Sin auth en API | Cualquiera crea users | API key / JWT |
+| Emulator abierto en host | Acceso local | No exponer en redes no confiables |
+| Throttle in-memory | Bypass multi-IP | Redis store / gateway |
+
+## Alternativas consideradas
+
+### A. Guardar plaintext “porque es demo”
+
+**Inaceptable** incluso en reto.
+
+### B. Solo bcrypt sin generación CSPRNG (Math.random)
+
+**Inaceptable.**
+
+### C. Generación CSPRNG + bcrypt + validación frontera (elegida)
+
+Cumple reto + higiene básica.
+
+## Consecuencias
+
+- Tests deben cubrir: generate length/charset (spot), hash called, plaintext nunca pasado al repository.create/update como campo final de DB.
+- Evaluador ve criterio de producción en ADR aunque el scope sea pequeño.
+
+## Criterios de aceptación
+
+- [ ] Generador y hasher detrás de ports (ADR-0002).
+- [ ] Firestore sin plaintext.
+- [ ] `.env*` con secretos reales no versionados.
+- [ ] Filter HTTP sin stack traces en respuesta.

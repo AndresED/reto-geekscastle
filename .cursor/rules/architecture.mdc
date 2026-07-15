@@ -1,0 +1,20 @@
+---
+alwaysApply: true
+---
+
+Respect:
+- Hexagonal Architecture
+- SOLID
+- Clean Architecture
+- Dependency Inversion
+- CQRS
+
+Rules:
+- No business logic in controllers.
+- Infrastructure never leaks into domain.
+- Application layer orchestrates.
+- Repositories only persist.
+- External services are Ports.
+- Framework-specific code belongs to Infrastructure.
+
+Question every violation.

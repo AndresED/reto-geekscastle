@@ -1,0 +1,15 @@
+Review:
+- Component composition
+- Feature boundaries
+- Hooks
+- React Query
+- Accessibility
+- Loading states
+- Error handling
+- Memoization
+
+Avoid:
+- Prop drilling
+- Duplicate state
+- Large components
+- Unnecessary effects

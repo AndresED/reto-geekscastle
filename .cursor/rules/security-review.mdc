@@ -1,0 +1,14 @@
+Review:
+- Validation
+- Authentication
+- Authorization
+- SQL Injection
+- Mass Assignment
+- Secrets
+- Docker
+- Rate limiting
+- Sensitive logging
+- XSS
+- CSRF
+- CORS
+- Dependency vulnerabilities

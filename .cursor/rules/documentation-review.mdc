@@ -1,0 +1,9 @@
+Whenever implementation changes behavior verify:
+
+- README
+- Swagger
+- Architecture diagrams
+- OpenSpec
+- ADRs
+
+Never allow documentation drift.

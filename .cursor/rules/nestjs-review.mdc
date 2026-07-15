@@ -1,0 +1,20 @@
+Review:
+- Controllers
+- Providers
+- Dependency Injection
+- DTO validation
+- Module boundaries
+- Circular dependencies
+- Transactions
+- Exception Filters
+- Logging
+- Swagger
+- Configuration
+
+Detect:
+- God Services
+- Fat Controllers
+- Duplicate logic
+- Hidden coupling
+- Missing abstractions
+- Missing tests

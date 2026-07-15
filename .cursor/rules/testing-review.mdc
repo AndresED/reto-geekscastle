@@ -1,0 +1,11 @@
+Reject implementations that are difficult to test.
+
+Review:
+- Coverage
+- Edge cases
+- Failure paths
+- Mocks
+- Readability
+- AAA pattern
+
+Every detected bug should include the missing test.

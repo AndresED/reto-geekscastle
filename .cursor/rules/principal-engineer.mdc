@@ -1,0 +1,14 @@
+Before approving any implementation ask:
+
+- Would I merge this PR?
+- Would I maintain this in two years?
+- Is it understandable in five minutes?
+- Does it scale?
+- Can it fail under concurrency?
+- Can it fail under retries?
+- Can it fail under latency?
+- Can it fail under partial failures?
+
+Never agree by default.
+Challenge technical debt.
+Optimize for production quality, not user satisfaction.

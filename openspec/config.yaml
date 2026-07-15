@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  Tech stack: NestJS + TypeScript (strict), hexagonal architecture, CQRS (@nestjs/cqrs).
+  Workspace: Nx lite with single app apps/api (ADR-0006).
+  IaC: Terraform lite under infra/ (ADR-0007); emulator is demo runtime.
+  Deadline: submit challenge before 2026-07-16 12:00 CDMX.
+  Persistence: Firebase Firestore via firebase-admin; local Firestore emulator.
+  Each command/query/event and its handler MUST be in separate files.
+  Controllers are thin: DTO validation + CommandBus/QueryBus only.
+  Domain has no Nest HTTP or firebase-admin imports.
+  Passwords: generate with Node crypto CSPRNG (≥16 chars); hash with bcrypt; never store plaintext; never return password/hash in HTTP.
+  On user insert without password: publish UserCreatedEvent; event handler generates password, hashes, updates Firestore.
+  Tests: Jest coverageThreshold statements ≥ 80%; mocks on ports.
+  CI: GitHub Actions build + test:cov. No CD in v1.
+  Requirements index: docs/requirements/reto.md (US-01..US-20).
+  ADRs: docs/adr/0001..0005 (accepted).
+  No frontend in v1. No API auth in v1.
+
+rules:
+  proposal:
+    - Align with docs/requirements/reto.md and accepted ADRs
+    - Always include a Non-goals section
+  design:
+    - Reference ADR-0002 for CQRS file layout and ADR-0003 for Firebase
+  tasks:
+    - Map tasks to US-xx ids where possible
+    - Prefer small vertical slices that keep CI green
