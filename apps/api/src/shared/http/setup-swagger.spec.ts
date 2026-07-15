@@ -30,6 +30,7 @@ describe('buildOpenApiDocument', () => {
     const document = buildOpenApiDocument(app);
 
     expect(document.paths['/api/v1/users']?.post).toBeDefined();
+    expect(document.paths['/api/v1/users']?.get).toBeDefined();
     expect(document.paths['/api/v1/users/{id}']?.get).toBeDefined();
     expect(document.paths['/api/v1/health']?.get).toBeDefined();
 

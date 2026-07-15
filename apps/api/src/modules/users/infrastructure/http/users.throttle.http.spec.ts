@@ -8,6 +8,7 @@ import { App } from 'supertest/types';
 import { CreateUserHandler } from '../../application/commands/handlers/create-user.handler';
 import { FinalizeMissingPasswordService } from '../../application/services/finalize-missing-password.service';
 import { GetUserByIdHandler } from '../../application/queries/handlers/get-user-by-id.handler';
+import { ListUsersHandler } from '../../application/queries/handlers/list-users.handler';
 import {
   PASSWORD_GENERATOR_PORT,
   type PasswordGeneratorPort,
@@ -45,6 +46,7 @@ describe('Users create throttle (HTTP)', () => {
         CreateUserHandler,
         FinalizeMissingPasswordService,
         GetUserByIdHandler,
+        ListUsersHandler,
         {
           provide: USER_REPOSITORY_PORT,
           useClass: InMemoryUserRepository,

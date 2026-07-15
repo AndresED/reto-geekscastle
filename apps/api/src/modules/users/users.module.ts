@@ -4,6 +4,7 @@ import { CreateUserHandler } from './application/commands/handlers/create-user.h
 import { UserCreatedAuditHandler } from './application/events/handlers/user-created-audit.handler';
 import { FinalizeMissingPasswordService } from './application/services/finalize-missing-password.service';
 import { GetUserByIdHandler } from './application/queries/handlers/get-user-by-id.handler';
+import { ListUsersHandler } from './application/queries/handlers/list-users.handler';
 import { PASSWORD_GENERATOR_PORT } from './domain/ports/password-generator.port';
 import { PASSWORD_HASHER_PORT } from './domain/ports/password-hasher.port';
 import { USER_REPOSITORY_PORT } from './domain/ports/user-repository.port';
@@ -14,7 +15,7 @@ import { UsersController } from './infrastructure/http/users.controller';
 import { FirestoreUserRepository } from './infrastructure/persistence/firestore-user.repository';
 
 const commandHandlers = [CreateUserHandler];
-const queryHandlers = [GetUserByIdHandler];
+const queryHandlers = [GetUserByIdHandler, ListUsersHandler];
 const eventHandlers = [UserCreatedAuditHandler];
 
 @Module({

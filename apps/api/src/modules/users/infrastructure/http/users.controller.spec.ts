@@ -60,4 +60,29 @@ describe('UsersController', () => {
     expect(response.hasPassword).toBe(true);
     expect(response).not.toHaveProperty('passwordHash');
   });
+
+  it('should dispatch ListUsersQuery and map responses without secrets', async () => {
+    const users = [
+      User.create({
+        id: 'u1',
+        username: 'jane',
+        email: 'jane@example.com',
+        passwordHash: 'h',
+        passwordGenerated: true,
+      }),
+    ];
+    queryBus.execute.mockResolvedValue(users);
+
+    const response = await controller.list();
+
+    expect(queryBus.execute).toHaveBeenCalled();
+    expect(response).toHaveLength(1);
+    expect(response[0]).toMatchObject({
+      id: 'u1',
+      username: 'jane',
+      email: 'jane@example.com',
+      passwordGenerated: true,
+    });
+    expect(response[0]).not.toHaveProperty('passwordHash');
+  });
 });

@@ -24,6 +24,7 @@ describe('CreateUserHandler', () => {
       updatePassword: jest.fn(),
       findById: jest.fn(),
       findByEmail: jest.fn().mockResolvedValue(null),
+      listAll: jest.fn(),
       delete: jest.fn().mockResolvedValue(undefined),
     };
     hasher = { hash: jest.fn() };

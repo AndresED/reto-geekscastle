@@ -88,6 +88,7 @@ describe('Create user password smoke', () => {
         const id = emails.get(email.trim().toLowerCase());
         return id ? (store.get(id) ?? null) : null;
       },
+      listAll: async () => [...store.values()],
       delete: async (id) => {
         const user = store.get(id);
         store.delete(id);

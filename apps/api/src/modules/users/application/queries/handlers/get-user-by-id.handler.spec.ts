@@ -14,8 +14,7 @@ describe('GetUserByIdHandler', () => {
       updatePassword: jest.fn(),
       findById: jest.fn(),
       findByEmail: jest.fn(),
-      create: jest.fn(),
-      updatePassword: jest.fn(),
+      listAll: jest.fn(),
       delete: jest.fn(),
     };
     handler = new GetUserByIdHandler(users);

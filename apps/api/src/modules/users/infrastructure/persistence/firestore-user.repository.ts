@@ -147,6 +147,19 @@ export class FirestoreUserRepository implements UserRepositoryPort {
     }
   }
 
+  async listAll(): Promise<User[]> {
+    try {
+      const snap = await this.db.collection(this.usersCollection).get();
+      return snap.docs
+        .map((doc) => this.toUser(doc.id, doc.data() as UserDoc))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    } catch (error) {
+      throw new UserPersistenceError(
+        `Failed to list users: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   async delete(id: string): Promise<void> {
     try {
       const user = await this.findById(id);

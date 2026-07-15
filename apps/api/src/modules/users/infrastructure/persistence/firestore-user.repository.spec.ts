@@ -173,6 +173,36 @@ describe('FirestoreUserRepository', () => {
     await expect(repo.findByEmail('missing@example.com')).resolves.toBeNull();
   });
 
+  it('should list all users from users collection', async () => {
+    const usersGet = jest.fn().mockResolvedValue({
+      docs: [
+        {
+          id: 'id-1',
+          data: () => ({
+            username: 'jane',
+            email: 'jane@example.com',
+            passwordHash: 'h',
+            passwordGenerated: true,
+            createdAt: '2026-07-15T00:00:00.000Z',
+            updatedAt: '2026-07-15T00:00:00.000Z',
+          }),
+        },
+      ],
+    });
+    collection.mockImplementation((name: string) => {
+      if (name === 'emails') {
+        return { doc: () => emailDoc };
+      }
+      return { doc: () => userDoc, get: usersGet };
+    });
+
+    const list = await repo.listAll();
+
+    expect(usersGet).toHaveBeenCalled();
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe('id-1');
+  });
+
   it('should update password hash on existing user', async () => {
     get.mockResolvedValue({
       exists: true,

@@ -25,6 +25,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { CreateUserCommand } from '../../application/commands/create-user.command';
 import { CreateUserResult } from '../../application/commands/create-user.result';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id.query';
+import { ListUsersQuery } from '../../application/queries/list-users.query';
 import { User } from '../../domain/entities/user.entity';
 import {
   DomainApiErrorDto,
@@ -84,6 +85,33 @@ export class UsersController {
       CreateUserResult
     >(new CreateUserCommand(dto.username, dto.email, dto.password));
     return this.toResponse(result.user, result.passwordGenerated);
+  }
+
+  @Get()
+  @SkipThrottle()
+  @ApiOperation({
+    summary: 'List users',
+    description:
+      'Returns all users (public fields only, ordered by createdAt ascending). Empty list when none exist.',
+  })
+  @ApiOkResponse({
+    description: 'Users found (may be empty)',
+    type: UserResponseDto,
+    isArray: true,
+  })
+  @ApiBadGatewayResponse({
+    description: 'Firestore persistence failure (`code: PERSISTENCE_ERROR`)',
+    type: DomainApiErrorDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected error (`code: INTERNAL_ERROR`)',
+    type: DomainApiErrorDto,
+  })
+  async list(): Promise<UserResponseDto[]> {
+    const users = await this.queryBus.execute<ListUsersQuery, User[]>(
+      new ListUsersQuery(),
+    );
+    return users.map((user) => this.toResponse(user, user.passwordGenerated));
   }
 
   @Get(':id')

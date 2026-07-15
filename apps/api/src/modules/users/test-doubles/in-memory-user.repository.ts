@@ -43,6 +43,12 @@ export class InMemoryUserRepository implements UserRepositoryPort {
     return this.store.get(userId) ?? null;
   }
 
+  async listAll(): Promise<User[]> {
+    return [...this.store.values()].sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+  }
+
   async delete(id: string): Promise<void> {
     const user = this.store.get(id);
     this.store.delete(id);

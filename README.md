@@ -64,6 +64,9 @@ curl -s -X POST http://localhost:3000/api/v1/users \
 
 # leer (nunca expone password/hash)
 curl -s http://localhost:3000/api/v1/users/<id>
+
+# listar todos
+curl -s http://localhost:3000/api/v1/users
 ```
 
 `POST /api/v1/users` está limitado a **20 req/min** (HTTP 429 si se supera).
