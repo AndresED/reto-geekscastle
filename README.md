@@ -13,6 +13,7 @@ Al crear un usuario sin `password`, `FinalizeMissingPasswordService` genera uno 
 | Workspace | Nx lite (`nx serve/build/test api`) |
 | Persistencia | Firestore via `firebase-admin` + emulator |
 | Seguridad | Helmet + throttle `POST /users` 20/min |
+| OpenAPI | Swagger UI en `/api/docs` (+ `/api/docs-json`) |
 | Tests | Jest ≥ 80 % statements + smoke create→password |
 | CI | GitHub Actions — API build/`test:cov` + Terraform validate |
 | IaC | `infra/` Terraform (validate/plan; apply opcional) |
@@ -43,7 +44,8 @@ npm run api:serve
 # o: cd apps/api && npm run start:dev
 ```
 
-Health: `GET http://localhost:3000/api/v1/health`
+Health: `GET http://localhost:3000/api/v1/health`  
+Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs) (OpenAPI JSON: `/api/docs-json`)
 
 ### Crear usuario
 
