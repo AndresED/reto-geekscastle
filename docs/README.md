@@ -4,7 +4,7 @@
 
 ### Evaluador
 
-1. [README raíz](../README.md) — setup rápido, curls (éxito y errores), tests
+1. [README raíz](../README.md) — setup, arquitectura, curls, tests y cómo lo desplegaría en GCP
 2. **OpenAPI** — con la API arriba: [http://localhost:3000/api/docs](http://localhost:3000/api/docs) (schemas + respuestas 201/400/404/409/429)
 3. [Requisitos e historias US-01 – US-22](./requirements/reto.md) — **deadline: 2026-07-16 12:00 CDMX**
 4. [Infra producto (Firestore + C4)](./infra/README.md) — modelo `users`/`emails`, flujos

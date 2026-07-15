@@ -20,6 +20,25 @@ Al crear un usuario sin `password`, `FinalizeMissingPasswordService` genera uno 
 | CI | GitHub Actions — API build/`test:cov` + Terraform validate |
 | IaC | `infra/` Terraform (validate/plan; apply opcional) |
 
+## Arquitectura (breve)
+
+El módulo `users` está armado con **arquitectura hexagonal** (Clean Architecture) y **CQRS**:
+
+| Capa | Qué hace |
+|------|----------|
+| `domain/` | Entidad `User`, puertos, errores y el evento `UserCreatedEvent`. Sin Nest ni Firebase. |
+| `application/` | Comandos, consultas y handlers (cada uno en su archivo). También el servicio que completa el password. |
+| `infrastructure/` | Firestore, bcrypt / generador seguro, controller HTTP y DTOs. |
+| HTTP | Controllers finos: validan el body y delegan al `CommandBus` / `QueryBus`. |
+
+**Alta sin password** (sin loops ni doble escritura):
+
+1. Se guarda el usuario en una transacción (`emails/{email}` + `users/{id}`).
+2. Se espera a `FinalizeMissingPasswordService`: genera el password, lo hashea con bcrypt y actualiza el documento.
+3. Se publica `UserCreatedEvent` solo como aviso de auditoría (`UserCreatedAuditHandler` escribe un log). El `EventBus` de Nest **no espera** a los handlers, así que ahí **no** se vuelve a mutar el password.
+
+Más detalle: [`docs/adr/0002`](./docs/adr/0002-backend-hexagonal-cqrs.md) y [`docs/infra/`](./docs/infra/).
+
 ## Prerrequisitos
 
 - Node.js 20+
@@ -132,6 +151,88 @@ Umbral: `coverageThreshold.global.statements: 80`.
 ## Terraform lite
 
 Ver [`infra/README.md`](./infra/README.md). El challenge se demuestra con **emulator**, no con `terraform apply`.
+
+## Cómo lo desplegaría en GCP
+
+> Solo documentación. Para este reto **no** hay que subir nada a la nube: la demo se hace con el emulador y `npm run api:serve`.
+
+En producción usaría **Cloud Run** para la API, **Firestore** para los datos y, más adelante, **Pub/Sub** + una **Cloud Function** (o un worker pequeño en Cloud Run) para lo asíncrono.
+
+### Decisiones
+
+- **Cloud Run para Nest.** La API es un proceso HTTP con Nest, CQRS, Swagger, Helmet y rate limit. Encaja bien en un contenedor que escala (incluso a cero) y trae HTTPS sin montar un cluster.
+- **Firestore nativo.** Misma base que en local, vía Admin SDK. El Terraform de `infra/` ya deja armada la base Native.
+- **Pub/Sub / Cloud Functions para el “después”.** En local el evento vive dentro de Nest. En prod sacaría la auditoría / notificaciones del request HTTP, **sin** regenerar el password en el consumidor.
+- **No pondría Nest entero en Cloud Functions.** El cold start y el modelo de ejecución no ayudan a este tipo de app. Una Function sí sirve como worker ligero escuchando Pub/Sub.
+
+### Esquema
+
+```text
+Cliente (HTTPS)
+       │
+       ▼
+  Cloud Armor / API Gateway   ← opcional, frente a Internet
+       │
+       ▼
+  Cloud Run  (API Nest)
+       │  Admin SDK + cuenta de servicio del propio Cloud Run
+       ├─────────────►  Firestore  (users, emails)
+       │
+       │  cuando el create ya terminó bien (password listo)
+       └─────────────►  Pub/Sub  topic: user.created
+                              │
+                              ▼
+                     Cloud Function (o otro Cloud Run)
+                     log / correo / métricas
+                     (idempotente; no toca el password)
+```
+
+### Local frente a producción
+
+| | Local (lo que entregamos) | GCP |
+|--|---------------------------|-----|
+| Datos | Emulador en `:8080` | Firestore del proyecto |
+| Cómo se autentica Admin SDK | Con `FIRESTORE_EMULATOR_HOST` | Cuenta de servicio de Cloud Run (ADC); sin JSON en el repo |
+| Config | Archivo `.env` | Variables del servicio + Secret Manager |
+| Variable del emulador | Obligatoria | **No debe existir** |
+| Evento | `EventBus` de Nest en el mismo proceso | Mensaje a Pub/Sub **después** de completar el password |
+| Secretos | Fuera de Git | Secret Manager / IAM |
+
+### Orden práctico para subirla
+
+1. Crear el proyecto GCP, activar facturación y elegir región (la misma idea que en `infra/`).
+2. Levantar Firestore con `terraform -chdir=infra apply` (o a mano en la consola). Colecciones: `users` y `emails`.
+3. Crear una **cuenta de servicio** solo para Cloud Run, con lo mínimo: lectura/escritura en Firestore y, si emite eventos, permiso de publicar en Pub/Sub. Sin bajar un JSON al repositorio.
+4. Empaquetar la API en una imagen Docker en dos etapas (build → `node dist/main`), usuario no root, y subirla a **Artifact Registry**.
+5. Desplegar esa imagen en **Cloud Run** con:
+   - `PORT` (Cloud Run lo pone; Nest lo lee),
+   - `FIREBASE_PROJECT_ID` = id real del proyecto,
+   - **sin** `FIRESTORE_EMULATOR_HOST`,
+   - secretos (si aparecen) montados desde Secret Manager.
+6. Usar `GET /api/v1/health` como chequeo. Con cero instancias se ahorra; con una se gana latencia en frío.
+7. Ampliar el CI que ya tenemos: además del build y `test:cov`, construir la imagen, empujarla al registry y hacer `gcloud run deploy` solo desde `main` o tags. Terraform validate ya corre en Actions.
+8. Seguir la app con Cloud Logging, Error Reporting y alertas de 5xx / latencia.
+
+### Eventos en la nube (sin ciclos)
+
+Misma regla que en local ([ADR-0002](./docs/adr/0002-backend-hexagonal-cqrs.md)):
+
+1. Se crea el usuario (y el claim del email).
+2. Se espera a que `FinalizeMissingPasswordService` genere y persista el hash. **Ese es el único camino que escribe el password.**
+3. Se responde **201** cuando el documento ya quedó listo.
+4. Recién ahí se publica `user.created` en Pub/Sub.
+
+Quien consuma el mensaje (Function o worker) debe poder **correr dos veces el mismo evento sin romper nada** (por ejemplo claveando por `userId` + id del mensaje) y limitarse a observar: auditoría, correo de bienvenida, métricas. Si ahí se regenerara el password, volvemos a los ciclos y a la doble mutación que el reto pide evitar.
+
+Hoy el `UserCreatedAuditHandler` es el prototipo en proceso. El mensaje de Pub/Sub puede llevar el mismo contenido (`userId`, si faltaba password).
+
+### Seguridad operativa
+
+- La imagen no lleva `.env` ni archivos de cuenta de servicio.
+- La cuenta de Cloud Run solo con los roles que necesita.
+- El rate limit de `POST /users` (20/min) se queda en la app; si crece el tráfico, se suma algo en el borde (p. ej. Cloud Armor).
+- Login de clientes no entra en este MVP (ver ADR-0005). En prod típico iría JWT / Identity Platform delante de Cloud Run.
+- Las reglas de Firestore para clientes **no** reemplazan al Admin SDK: en este diseño escribe el backend.
 
 ## Documentación
 
