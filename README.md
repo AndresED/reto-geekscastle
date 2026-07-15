@@ -237,11 +237,26 @@ Hoy el `UserCreatedAuditHandler` es el prototipo en proceso. El mensaje de Pub/S
 
 ## Documentación
 
+### Wiki (empezar aquí si eres nuevo en el repo)
+
+Guía en español: hexagonal + CQRS con analogías, cómo decidimos, Pub/Sub a futuro y el camino para mantener o agregar features.
+
+| Doc | Contenido |
+|-----|-----------|
+| [docs/wiki/](./docs/wiki/README.md) | Índice de la wiki |
+| [Camino del desarrollador](./docs/wiki/camino-del-desarrollador.md) | Onboarding y recetas command/query |
+| [Arquitectura](./docs/wiki/arquitectura.md) | Hexagonal + CQRS |
+| [Toma de decisiones](./docs/wiki/toma-de-decisiones.md) | ADR vs OpenSpec vs wiki |
+| [Futuro Pub/Sub](./docs/wiki/futuro-pubsub.md) | Cómo sacar eventos de Nest sin romper el `201` |
+
+### Resto
+
 | Doc | Contenido |
 |-----|-----------|
 | [docs/requirements/reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 |
 | [docs/adr/](./docs/adr/) | ADRs 0001–0007 |
 | [docs/architecture/finalize-await-vs-events-handler.md](./docs/architecture/finalize-await-vs-events-handler.md) | Por qué finalize await ≠ `@EventsHandler` |
+| [docs/infra/](./docs/infra/) | Modelo Firestore + C4 |
 | [openspec/specs/](./openspec/specs/) | Specs vivas (OpenSpec) |
 | [openspec/changes/archive/](./openspec/changes/archive/) | Changes archivados |
 | [docs/reviews/latest.md](./docs/reviews/latest.md) | Último code review |
