@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { USERS_WRITE_THROTTLE } from './modules/users/infrastructure/http/throttle.constants';
+import { USERS_WRITE_THROTTLE } from './shared/config/throttle.constants';
 import { UsersModule } from './modules/users/users.module';
 import { validateEnv } from './shared/config/env.validation';
 import { HealthController } from './shared/health/health.controller';

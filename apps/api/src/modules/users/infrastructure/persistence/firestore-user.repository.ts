@@ -46,21 +46,19 @@ export class FirestoreUserRepository implements UserRepositoryPort {
     };
 
     try {
-      await emailRef.create(claim);
-    } catch (error) {
-      if (isAlreadyExists(error)) {
-        throw new UserEmailConflictError(user.email);
-      }
-      throw new UserPersistenceError(
-        `Failed to claim email: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    try {
-      await userRef.set(doc);
+      await this.db.runTransaction(async (tx) => {
+        const existingClaim = await tx.get(emailRef);
+        if (existingClaim.exists) {
+          throw new UserEmailConflictError(user.email);
+        }
+        tx.set(emailRef, claim);
+        tx.set(userRef, doc);
+      });
       return user;
     } catch (error) {
-      await emailRef.delete().catch(() => undefined);
+      if (error instanceof UserEmailConflictError) {
+        throw error;
+      }
       throw new UserPersistenceError(
         `Failed to create user: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -162,16 +160,4 @@ export class FirestoreUserRepository implements UserRepositoryPort {
       updatedAt: new Date(data.updatedAt),
     });
   }
-}
-
-function isAlreadyExists(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) {
-    return false;
-  }
-  const code = (error as { code?: number | string }).code;
-  if (code === 6 || code === 'already-exists' || code === 'ALREADY_EXISTS') {
-    return true;
-  }
-  const message = (error as { message?: string }).message ?? '';
-  return /ALREADY_EXISTS|already exists/i.test(message);
 }

@@ -66,7 +66,7 @@ curl -s http://localhost:3000/api/v1/users/<id>
 
 Si falla la generación/persistencia del password tras el insert, el create no responde 201 y se intenta borrar el documento (best-effort; un crash a mitad podría dejar un huérfano residual).
 
-El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. La unicidad se refuerza con un claim en colección `emails/{email}` (`create` atómico) además del documento en `users`.
+El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. Claim `emails/{email}` + doc `users/{id}` se escriben en la misma **transacción** Firestore (sin claim huérfano si falla el write del user).
 
 ## Tests
 

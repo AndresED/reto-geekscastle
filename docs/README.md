@@ -4,16 +4,19 @@
 
 ### Evaluador
 
-1. [README raíz](../README.md) — cuando exista: setup rápido
+1. [README raíz](../README.md) — setup rápido, curls, tests
 2. [Requisitos e historias US-01 – US-22](./requirements/reto.md) — **deadline: 2026-07-16 12:00 CDMX**
-3. [ADRs](./adr/) — decisiones vinculantes (incl. Nx + Terraform lite)
-4. Reto original: [`reto.md`](../reto.md)
+3. [Infra producto (Firestore + C4)](./infra/README.md) — modelo `users`/`emails`, flujos
+4. [ADRs](./adr/) — decisiones vinculantes (incl. Nx + Terraform lite)
+5. Terraform: [`infra/README.md`](../infra/README.md) (raíz del repo)
+6. Reto original: [`reto.md`](../reto.md)
 
 ### Desarrollador
 
 - Historias detalladas (copiar a GitHub Issues): [`requirements/reto.md`](./requirements/reto.md)
 - ADRs antes de implementar features transversales
-- OpenSpec: carpeta `openspec/` (tras `openspec init`)
+- Infra de producto: [`docs/infra/`](./infra/README.md)
+- OpenSpec: carpeta `openspec/`
 
 ---
 
@@ -35,10 +38,11 @@
 
 ```
 docs/
-├── README.md                 ← estás acá
-├── requirements/reto.md      ← historias US + mapa
-├── adr/                      ← ADR-0001 … 0007
-└── documentacion-referencial-ejemplo/  ← plantilla de otro reto (referencia de estilo)
+├── README.md              ← estás acá
+├── requirements/reto.md   ← historias US + mapa
+├── adr/                   ← ADR-0001 … 0007
+├── infra/                 ← Firestore model + C4 (este reto)
+└── reviews/               ← code reviews
 ```
 
 ---

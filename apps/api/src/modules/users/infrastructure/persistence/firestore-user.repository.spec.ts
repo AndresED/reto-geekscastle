@@ -7,65 +7,48 @@ import {
 import { FirestoreUserRepository } from './firestore-user.repository';
 
 describe('FirestoreUserRepository', () => {
-  const set = jest.fn();
   const update = jest.fn();
   const get = jest.fn();
-  const del = jest.fn();
-  const create = jest.fn();
   const batchDelete = jest.fn();
   const batchCommit = jest.fn();
   const batch = jest.fn(() => ({
     delete: batchDelete,
     commit: batchCommit,
   }));
+  const runTransaction = jest.fn();
 
-  const emailDoc = { create, get, delete: del };
-  const userDoc = { set, update, get, delete: del };
-
-  const doc = jest.fn((id: string) => {
-    // heuristic: uuid-like or id-1 → user; emails → email claim docs
-    return id.includes('@') || id === 'jane@example.com' ? emailDoc : userDoc;
-  });
+  const emailDoc = { get, delete: jest.fn() };
+  const userDoc = { set: jest.fn(), update, get, delete: jest.fn() };
 
   const collection = jest.fn((name: string) => {
     if (name === 'emails') {
-      return {
-        doc: (email: string) => {
-          void email;
-          return emailDoc;
-        },
-      };
+      return { doc: () => emailDoc };
     }
-    return {
-      doc: (id: string) => {
-        void id;
-        return userDoc;
-      },
-    };
+    return { doc: () => userDoc };
   });
 
-  const db = { collection, batch } as unknown as Firestore;
+  const db = { collection, batch, runTransaction } as unknown as Firestore;
   let repo: FirestoreUserRepository;
 
   beforeEach(() => {
     jest.clearAllMocks();
     collection.mockImplementation((name: string) => {
       if (name === 'emails') {
-        return {
-          doc: () => emailDoc,
-        };
+        return { doc: () => emailDoc };
       }
-      return {
-        doc: () => userDoc,
-      };
+      return { doc: () => userDoc };
     });
     batch.mockReturnValue({ delete: batchDelete, commit: batchCommit });
     repo = new FirestoreUserRepository(db);
   });
 
-  it('should claim email then persist user on create', async () => {
-    create.mockResolvedValue(undefined);
-    set.mockResolvedValue(undefined);
+  it('should write email claim and user in one transaction', async () => {
+    const txSet = jest.fn();
+    const txGet = jest.fn().mockResolvedValue({ exists: false });
+    runTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+      await fn({ get: txGet, set: txSet });
+    });
+
     const user = User.create({
       id: 'id-1',
       username: 'jane',
@@ -74,23 +57,20 @@ describe('FirestoreUserRepository', () => {
 
     const created = await repo.create(user);
 
-    expect(collection).toHaveBeenCalledWith('emails');
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'id-1' }),
-    );
-    expect(collection).toHaveBeenCalledWith('users');
-    expect(set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        username: 'jane',
-        email: 'jane@example.com',
-        passwordHash: null,
-      }),
-    );
+    expect(runTransaction).toHaveBeenCalled();
+    expect(txGet).toHaveBeenCalled();
+    expect(txSet).toHaveBeenCalledTimes(2);
     expect(created.id).toBe('id-1');
   });
 
-  it('should map email claim ALREADY_EXISTS to UserEmailConflictError', async () => {
-    create.mockRejectedValue({ code: 6, message: 'ALREADY_EXISTS' });
+  it('should map existing claim in transaction to UserEmailConflictError', async () => {
+    runTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+      await fn({
+        get: jest.fn().mockResolvedValue({ exists: true }),
+        set: jest.fn(),
+      });
+    });
+
     const user = User.create({
       id: 'id-1',
       username: 'jane',
@@ -100,13 +80,10 @@ describe('FirestoreUserRepository', () => {
     await expect(repo.create(user)).rejects.toBeInstanceOf(
       UserEmailConflictError,
     );
-    expect(set).not.toHaveBeenCalled();
   });
 
-  it('should release email claim when user set fails', async () => {
-    create.mockResolvedValue(undefined);
-    set.mockRejectedValue(new Error('offline'));
-    del.mockResolvedValue(undefined);
+  it('should wrap non-conflict transaction failures as UserPersistenceError', async () => {
+    runTransaction.mockRejectedValue(new Error('offline'));
     const user = User.create({
       id: 'id-1',
       username: 'jane',
@@ -116,7 +93,6 @@ describe('FirestoreUserRepository', () => {
     await expect(repo.create(user)).rejects.toBeInstanceOf(
       UserPersistenceError,
     );
-    expect(del).toHaveBeenCalled();
   });
 
   it('should find by email via claim doc', async () => {

@@ -19,7 +19,7 @@ import {
 import { USER_REPOSITORY_PORT } from '../../domain/ports/user-repository.port';
 import { InMemoryUserRepository } from '../../testing/in-memory-user.repository';
 import { HealthController } from '../../../../shared/health/health.controller';
-import { USERS_WRITE_THROTTLE } from './throttle.constants';
+import { USERS_WRITE_THROTTLE } from '../../../../shared/config/throttle.constants';
 import { UsersController } from './users.controller';
 
 describe('Users create throttle (HTTP)', () => {
