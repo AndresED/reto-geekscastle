@@ -6,7 +6,6 @@
 
 **Objetivo:** API backend en **NestJS + TypeScript** con **arquitectura hexagonal + CQRS**, persistencia en **Firebase (Firestore via Admin SDK)**, que permita crear un `User` y, al insertar, dispare un **evento de dominio** que genere (si falta) un **password seguro**, lo hashee y **actualice** el registro.
 
-**Reto original:** [`reto.md`](../../reto.md) en la raíz del repositorio.  
 **PDF challenge:** `Challenge -Desarrollador Backend 2026.pdf`  
 **Deadline entrega:** antes del **jueves 16 de julio 2026, 12:00 CDMX**.
 

@@ -100,7 +100,6 @@ Ver [`infra/README.md`](./infra/README.md). El challenge se demuestra con **emul
 | [openspec/specs/](./openspec/specs/) | Specs vivas (OpenSpec) |
 | [openspec/changes/archive/](./openspec/changes/archive/) | Changes archivados |
 | [docs/reviews/latest.md](./docs/reviews/latest.md) | Último code review |
-| [reto.md](./reto.md) | Enunciado original |
 
 ## Project board
 

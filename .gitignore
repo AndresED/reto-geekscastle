@@ -1,28 +1,36 @@
 # Dependencies
 node_modules/
+**/node_modules/
 .pnpm-store/
 
 # Build / Nest / Nx
 dist/
+**/dist/
 tmp/
 out-tsc/
 *.tsbuildinfo
-.nx/cache/
-.nx/workspace-data/
+.nx/
 .angular/
 
 # Env & secrets (nunca commitear)
 .env
 .env.*
 !.env.example
+!**/.env.example
 *.pem
+*.p12
+*.pfx
 *-service-account*.json
 **/serviceAccount*.json
+**/service-account*.json
 google-credentials.json
 application_default_credentials.json
+**/application_default_credentials.json
+gcloud-credentials.json
 
 # Tests / coverage
 coverage/
+**/coverage/
 .nyc_output/
 *.lcov
 
@@ -34,16 +42,19 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Firebase
+# Firebase / emulator runtime
 .firebase/
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-pubsub-debug.log
+firebase-debug.log*
+firestore-debug.log*
+database-debug.log*
+pubsub-debug.log*
+ui-debug.log*
+storage-debug.log*
+*-debug.log
+.runtimeconfig.json
 
 # Terraform
-infra/.terraform/
-infra/**/.terraform/
+**/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars
@@ -70,6 +81,13 @@ Desktop.ini
 *.swp
 *.swo
 *~
+
+# Local agent / skills installs (no son del deliverable)
+.agents/
+skills-lock.json
+
+# Challenge PDF local (fuente viva: docs/ + README)
+Challenge*.pdf
 
 # Misc
 *.local
