@@ -1,7 +1,7 @@
 # platform Specification
 
 ## Purpose
-TBD - created by archiving change bootstrap-users-api. Update Purpose after archive.
+NestJS platform bootstrap: strict TypeScript, /api/v1 prefix, health, hexagonal layout, CQRS file separation, and validated env.
 ## Requirements
 ### Requirement: Backend technology stack
 The system MUST be implemented as a NestJS application in TypeScript with strict type-checking enabled.

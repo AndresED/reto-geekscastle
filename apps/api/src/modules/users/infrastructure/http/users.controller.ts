@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { CreateUserCommand } from '../../application/commands/create-user.command';
 import { CreateUserResult } from '../../application/commands/handlers/create-user.handler';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id.query';
@@ -32,6 +33,7 @@ export class UsersController {
   ) {}
 
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateUserDto): Promise<UserResponse> {
     const result = await this.commandBus.execute<
@@ -42,6 +44,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @SkipThrottle()
   async getById(@Param('id') id: string): Promise<UserResponse> {
     const user = await this.queryBus.execute<GetUserByIdQuery, User>(
       new GetUserByIdQuery(id),

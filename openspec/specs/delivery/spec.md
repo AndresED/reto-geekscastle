@@ -1,7 +1,7 @@
 # delivery Specification
 
 ## Purpose
-TBD - created by archiving change bootstrap-users-api. Update Purpose after archive.
+Local Firebase emulator workflow, README, GitHub Actions CI (API + Terraform validate), and secret-safe delivery practices.
 ## Requirements
 ### Requirement: Firebase emulator local workflow
 The project MUST document and support running the Firestore emulator locally and connecting the NestJS app to it via environment variables.
@@ -48,4 +48,36 @@ The repository MUST include a `infra/` Terraform configuration that is formattab
 #### Scenario: Infra folder is present and documented
 - **WHEN** an evaluator reads `infra/` documentation
 - **THEN** they can run or understand `terraform validate` and still use the emulator as the challenge runtime path
+
+### Requirement: Rate limit on user creation
+The API MUST rate-limit `POST /api/v1/users` to reduce abuse. Excess requests MUST receive HTTP 429. The health endpoint MUST NOT be subject to the same write rate limit.
+
+#### Scenario: Create is rate limited
+- **WHEN** a client exceeds the configured create rate limit within the time window
+- **THEN** the system responds with HTTP 429
+
+#### Scenario: Health remains available under throttle policy
+- **WHEN** a client calls `GET /api/v1/health`
+- **THEN** the request is not rejected solely by the create-endpoint write throttle
+
+### Requirement: HTTP security headers
+The NestJS application MUST enable Helmet (or equivalent security headers middleware) at bootstrap.
+
+#### Scenario: API boots with Helmet
+- **WHEN** the API process starts successfully
+- **THEN** Helmet middleware is registered on the HTTP application
+
+### Requirement: CI validates Terraform lite
+Continuous Integration MUST run `terraform fmt -check` and `terraform validate` for the `infra/` configuration (with backend disabled for init) on push/PR to the default branch.
+
+#### Scenario: Invalid Terraform fails CI
+- **WHEN** the Terraform configuration under `infra/` fails fmt check or validate
+- **THEN** the CI workflow fails
+
+### Requirement: Documentation links resolve
+Project README documentation links to OpenSpec MUST point to living `openspec/specs/` and/or an existing archive path under `openspec/changes/archive/`, not a deleted active change directory.
+
+#### Scenario: README OpenSpec link exists
+- **WHEN** an evaluator follows the README OpenSpec documentation link
+- **THEN** the target path exists in the repository
 

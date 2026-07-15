@@ -5,14 +5,18 @@ import { PasswordGeneratorPort } from '../../domain/ports/password-generator.por
 const CHARSET =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
 const LENGTH = 16;
+const MAX_UNBIASED = 256 - (256 % CHARSET.length);
 
 @Injectable()
 export class CryptoPasswordGenerator implements PasswordGeneratorPort {
   generate(): string {
-    const bytes = randomBytes(LENGTH);
     let out = '';
-    for (let i = 0; i < LENGTH; i += 1) {
-      out += CHARSET[bytes[i] % CHARSET.length];
+    while (out.length < LENGTH) {
+      const byte = randomBytes(1)[0]!;
+      if (byte >= MAX_UNBIASED) {
+        continue;
+      }
+      out += CHARSET[byte % CHARSET.length];
     }
     return out;
   }

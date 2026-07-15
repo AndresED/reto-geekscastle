@@ -25,3 +25,20 @@ jobs:
         run: npm run build
       - name: Test with coverage
         run: npm run test:cov
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.8'
+      - name: Terraform fmt
+        run: terraform fmt -check
+      - name: Terraform init
+        run: terraform init -backend=false
+      - name: Terraform validate
+        run: terraform validate

@@ -1,7 +1,7 @@
 # Reto GeeksCastle — Users API
 
 API **NestJS** (hexagonal + **CQRS**) + **Firebase Firestore**, orquestada con **Nx lite**, IaC **Terraform lite**.  
-Al crear un usuario sin `password`, un evento de dominio genera uno seguro, lo hashea (bcrypt) y actualiza el documento.
+Al crear un usuario sin `password`, un evento de dominio genera uno seguro, lo hashea (bcrypt) y actualiza el documento (await en el request path).
 
 **Deadline de entrega:** antes del **2026-07-16 12:00 CDMX**.
 
@@ -12,8 +12,9 @@ Al crear un usuario sin `password`, un evento de dominio genera uno seguro, lo h
 | App | `apps/api` (NestJS 11, TypeScript strict) |
 | Workspace | Nx lite (`nx serve/build/test api`) |
 | Persistencia | Firestore via `firebase-admin` + emulator |
-| Tests | Jest ≥ 80 % statements |
-| CI | GitHub Actions — build + `test:cov` |
+| Seguridad | Helmet + throttle `POST /users` 20/min |
+| Tests | Jest ≥ 80 % statements + smoke create→password |
+| CI | GitHub Actions — API build/`test:cov` + Terraform validate |
 | IaC | `infra/` Terraform (validate/plan; apply opcional) |
 
 ## Prerrequisitos
@@ -21,7 +22,7 @@ Al crear un usuario sin `password`, un evento de dominio genera uno seguro, lo h
 - Node.js 20+
 - npm
 - Firebase CLI (`npm i -g firebase-tools`) para emulator
-- Terraform (opcional, solo `infra/`)
+- Terraform (opcional en local; validado en CI)
 
 ## Setup rápido
 
@@ -47,7 +48,7 @@ Health: `GET http://localhost:3000/api/v1/health`
 ### Crear usuario
 
 ```bash
-# sin password → evento genera uno seguro (hash en Firestore)
+# sin password → genera hash seguro y responde con hasPassword:true
 curl -s -X POST http://localhost:3000/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"jane","email":"jane@example.com"}'
@@ -61,18 +62,26 @@ curl -s -X POST http://localhost:3000/api/v1/users \
 curl -s http://localhost:3000/api/v1/users/<id>
 ```
 
+`POST /api/v1/users` está limitado a **20 req/min** (HTTP 429 si se supera).
+
 ## Tests
 
 ```bash
 npm run test:cov
 # o: cd apps/api && npm run test:cov
+
+# smoke create-without-password → persisted hash
+cd apps/api && npm run test:smoke
 ```
 
 Umbral: `coverageThreshold.global.statements: 80`.
 
 ## CI
 
-`.github/workflows/ci.yml` — Node 20: `npm ci` → `build` → `test:cov` en `apps/api`.
+`.github/workflows/ci.yml`:
+
+- **api** — Node 20: `npm ci` → `build` → `test:cov`
+- **terraform** — `fmt -check` + `init -backend=false` + `validate` en `infra/`
 
 ## Terraform lite
 
@@ -84,7 +93,9 @@ Ver [`infra/README.md`](./infra/README.md). El challenge se demuestra con **emul
 |-----|-----------|
 | [docs/requirements/reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 |
 | [docs/adr/](./docs/adr/) | ADRs 0001–0007 |
-| [openspec/changes/bootstrap-users-api/](./openspec/changes/bootstrap-users-api/) | Proposal / design / specs / tasks |
+| [openspec/specs/](./openspec/specs/) | Specs vivas (OpenSpec) |
+| [openspec/changes/archive/](./openspec/changes/archive/) | Changes archivados |
+| [docs/reviews/latest.md](./docs/reviews/latest.md) | Último code review |
 | [reto.md](./reto.md) | Enunciado original |
 
 ## Project board

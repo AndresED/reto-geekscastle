@@ -4,6 +4,12 @@
 
 Aceptado
 
+## Enmienda (2026-07-15 — baseline aplicada)
+
+- `@nestjs/throttler`: `POST /api/v1/users` **20 req/min**; `GET /users/:id` y `/health` con `@SkipThrottle()`.
+- `helmet()` en `main.ts`.
+- Generador de password usa rejection sampling (sin bias de modulo).
+
 ## Fecha
 
 2026-07-15
@@ -33,9 +39,9 @@ La API del reto es demo sin auth de clientes; aun así se aplican controles razo
 | Validación | `ValidationPipe` `whitelist` + `forbidNonWhitelisted` + `transform` |
 | Email | Formato válido; normalización trim/lowercase en frontera |
 | Password cliente (si envía) | Longitud mínima **8**; máximo razonable (ej. 128) para evitar DoS de bcrypt |
-| Rate limit | `@nestjs/throttler` en `POST /users` (ej. 20/min) — recomendado |
+| Rate limit | `@nestjs/throttler` en `POST /users` **20/min** (implementado) |
 | AuthN/AuthZ API | **No** en v1 |
-| Helmet | Recomendado en `main.ts` |
+| Helmet | **Implementado** en `main.ts` |
 | Secretos | Solo env / secret manager; nunca repo |
 
 ## Decisión
@@ -80,7 +86,8 @@ Cumple reto + higiene básica.
 
 ## Criterios de aceptación
 
-- [ ] Generador y hasher detrás de ports (ADR-0002).
-- [ ] Firestore sin plaintext.
-- [ ] `.env*` con secretos reales no versionados.
-- [ ] Filter HTTP sin stack traces en respuesta.
+- [x] Generador y hasher detrás de ports (ADR-0002).
+- [x] Firestore sin plaintext.
+- [x] `.env*` con secretos reales no versionados.
+- [x] Filter HTTP sin stack traces en respuesta.
+- [x] Throttle en `POST /users` + Helmet en bootstrap.

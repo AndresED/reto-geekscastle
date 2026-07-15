@@ -1,7 +1,7 @@
 # users Specification
 
 ## Purpose
-TBD - created by archiving change bootstrap-users-api. Update Purpose after archive.
+Users bounded context: create/get user via CQRS, Firestore persistence, secure password generation/hashing on create when password is omitted.
 ## Requirements
 ### Requirement: User entity fields
 The system MUST model a User with auto-generated `id`, `username`, `email`, and optional password at creation time.
@@ -47,15 +47,19 @@ After a user document is inserted, the system MUST publish a `UserCreatedEvent` 
 - **THEN** a user-created event is published with a signal that password is not missing
 
 ### Requirement: Generate secure password on missing password
-When the user-created event indicates a missing password, the event handler MUST generate a cryptographically secure password of at least 16 characters, hash it, and update the user record in Firestore via the repository port.
+When the user-created flow indicates a missing password, the system MUST generate a cryptographically secure password of at least 16 characters, hash it, and update the user record via the repository port before the create HTTP response is finalized. If the user already has a password hash, the handler MUST NOT regenerate or overwrite it. If generation or update fails for a missing-password create, the create request MUST NOT succeed with HTTP 201.
 
-#### Scenario: Missing password triggers generate and update
-- **WHEN** the event handler receives password-missing=true
-- **THEN** it generates a password, hashes it, and calls repository update
+#### Scenario: Missing password triggers generate and update before response
+- **WHEN** a client creates a user without a password
+- **THEN** the system generates a password, hashes it, persists the hash via the repository, and completes create only after that update succeeds
 
 #### Scenario: Existing password is not regenerated
-- **WHEN** the event handler receives password-missing=false
+- **WHEN** the password-on-created handler runs for a user that already has a password hash OR receives password-missing=false
 - **THEN** it MUST NOT generate a new password or overwrite the existing hash
+
+#### Scenario: Generate or update failure fails create
+- **WHEN** password generation or password update fails after user insert for a missing-password create
+- **THEN** the create operation MUST fail (not return HTTP 201 success)
 
 ### Requirement: Get user by id query
 The system MUST expose `GET /api/v1/users/:id` implemented as a Query + Handler in separate files, returning public user fields without password secrets.
@@ -74,4 +78,18 @@ HTTP controllers MUST validate input and dispatch commands/queries only; they MU
 #### Scenario: Controller delegates create
 - **WHEN** `POST /api/v1/users` is handled
 - **THEN** the controller dispatches `CreateUserCommand` through the command bus
+
+### Requirement: Create response reflects finalized password state
+After a successful `POST /api/v1/users` without a client-supplied password, the response body MUST report `passwordGenerated: true` and `hasPassword: true` together. The response MUST NOT claim `passwordGenerated: true` while `hasPassword` is false.
+
+#### Scenario: Consistent flags on create without password
+- **WHEN** create succeeds without a client-supplied password
+- **THEN** `passwordGenerated` is true and `hasPassword` is true in the same response
+
+### Requirement: Unbiased secure password generation
+Password generation MUST use a cryptographically secure RNG and MUST NOT use naive modulo mapping of raw bytes onto the charset when that introduces measurable bias. Rejection sampling or an equivalent unbiased method MUST be used.
+
+#### Scenario: Generator produces policy-compliant passwords
+- **WHEN** the password generator runs
+- **THEN** it returns a password of at least 16 characters using the configured charset without naive biased modulo mapping
 

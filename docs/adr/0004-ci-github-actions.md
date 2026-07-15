@@ -4,6 +4,10 @@
 
 Aceptado
 
+## Enmienda (2026-07-15 — Terraform en CI)
+
+Job adicional `terraform`: `fmt -check` + `init -backend=false` + `validate` sobre `infra/` (sin credenciales GCP).
+
 ## Fecha
 
 2026-07-15
@@ -42,7 +46,8 @@ Un job `api` (nombre libre) que falle si:
 
 ```
 push/PR → main
-  └── job api → checkout → setup-node 20 → npm ci → build → test:cov
+  ├── job api       → checkout → setup-node 20 → npm ci → build → test:cov
+  └── job terraform → checkout → setup-terraform → fmt -check → init -backend=false → validate
 ```
 
 ## Alternativas consideradas
