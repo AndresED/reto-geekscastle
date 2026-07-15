@@ -1,5 +1,8 @@
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
-import { NotFoundDomainError } from '../errors/domain.error';
+import {
+  ConflictDomainError,
+  NotFoundDomainError,
+} from '../errors/domain.error';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 describe('HttpExceptionFilter', () => {
@@ -23,6 +26,14 @@ describe('HttpExceptionFilter', () => {
     expect(status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'NOT_FOUND' }),
+    );
+  });
+
+  it('should map domain conflict to 409', () => {
+    filter.catch(new ConflictDomainError('taken'), host);
+    expect(status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'CONFLICT' }),
     );
   });
 

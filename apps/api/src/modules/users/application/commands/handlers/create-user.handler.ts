@@ -1,10 +1,12 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { randomUUID } from 'crypto';
-import { GeneratePasswordOnUserCreatedHandler } from '../../events/handlers/generate-password-on-user-created.handler';
 import { User } from '../../../domain/entities/user.entity';
 import { UserCreatedEvent } from '../../../domain/events/user-created.event';
-import { UserNotFoundError } from '../../../domain/errors/user.errors';
+import {
+  UserEmailConflictError,
+  UserNotFoundError,
+} from '../../../domain/errors/user.errors';
 import {
   PASSWORD_HASHER_PORT,
   type PasswordHasherPort,
@@ -13,6 +15,7 @@ import {
   USER_REPOSITORY_PORT,
   type UserRepositoryPort,
 } from '../../../domain/ports/user-repository.port';
+import { FinalizeMissingPasswordService } from '../../finalize-missing-password.service';
 import { CreateUserCommand } from '../create-user.command';
 
 export type CreateUserResult = {
@@ -24,13 +27,15 @@ export type CreateUserResult = {
 export class CreateUserHandler
   implements ICommandHandler<CreateUserCommand, CreateUserResult>
 {
+  private readonly logger = new Logger(CreateUserHandler.name);
+
   constructor(
     @Inject(USER_REPOSITORY_PORT)
     private readonly users: UserRepositoryPort,
     @Inject(PASSWORD_HASHER_PORT)
     private readonly hasher: PasswordHasherPort,
     private readonly eventBus: EventBus,
-    private readonly generatePasswordOnUserCreated: GeneratePasswordOnUserCreatedHandler,
+    private readonly finalizeMissingPassword: FinalizeMissingPasswordService,
   ) {}
 
   async execute(command: CreateUserCommand): Promise<CreateUserResult> {
@@ -52,12 +57,25 @@ export class CreateUserHandler
       passwordGenerated: false,
     });
 
-    const created = await this.users.create(user);
-    const event = new UserCreatedEvent(created.id, passwordMissing);
+    const existing = await this.users.findByEmail(user.email);
+    if (existing) {
+      throw new UserEmailConflictError(user.email);
+    }
 
-    // Await side-effect in the request path; Nest EventBus publish is fire-and-forget.
-    await this.generatePasswordOnUserCreated.handle(event);
-    await this.eventBus.publish(event);
+    const created = await this.users.create(user);
+
+    if (passwordMissing) {
+      try {
+        await this.finalizeMissingPassword.execute(created.id);
+      } catch (error) {
+        await this.compensateCreate(created.id);
+        throw error;
+      }
+    }
+
+    await this.eventBus.publish(
+      new UserCreatedEvent(created.id, passwordMissing),
+    );
 
     const finalized = passwordMissing
       ? await this.users.findById(created.id)
@@ -71,5 +89,18 @@ export class CreateUserHandler
       user: finalized,
       passwordGenerated: passwordMissing,
     };
+  }
+
+  /** Best-effort delete after finalize failure; residual orphan possible if delete also fails. */
+  private async compensateCreate(userId: string): Promise<void> {
+    try {
+      await this.users.delete(userId);
+    } catch (deleteError) {
+      this.logger.error(
+        `Compensate delete failed for user ${userId}: ${
+          deleteError instanceof Error ? deleteError.message : String(deleteError)
+        }`,
+      );
+    }
   }
 }

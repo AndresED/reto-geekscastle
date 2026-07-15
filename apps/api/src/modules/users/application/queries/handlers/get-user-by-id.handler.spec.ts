@@ -13,6 +13,10 @@ describe('GetUserByIdHandler', () => {
       create: jest.fn(),
       updatePassword: jest.fn(),
       findById: jest.fn(),
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      updatePassword: jest.fn(),
+      delete: jest.fn(),
     };
     handler = new GetUserByIdHandler(users);
   });

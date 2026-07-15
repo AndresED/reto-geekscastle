@@ -20,7 +20,7 @@ import {
   CreateUserHandler,
   CreateUserResult,
 } from './commands/handlers/create-user.handler';
-import { GeneratePasswordOnUserCreatedHandler } from './events/handlers/generate-password-on-user-created.handler';
+import { FinalizeMissingPasswordService } from './finalize-missing-password.service';
 
 class InMemoryUserRepository implements UserRepositoryPort {
   private readonly store = new Map<string, User>();
@@ -47,6 +47,20 @@ class InMemoryUserRepository implements UserRepositoryPort {
   async findById(id: string): Promise<User | null> {
     return this.store.get(id) ?? null;
   }
+
+  async findByEmail(email: string): Promise<User | null> {
+    const normalized = email.trim().toLowerCase();
+    for (const user of this.store.values()) {
+      if (user.email === normalized) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  async delete(id: string): Promise<void> {
+    this.store.delete(id);
+  }
 }
 
 describe('Create user password smoke', () => {
@@ -61,7 +75,7 @@ describe('Create user password smoke', () => {
       imports: [CqrsModule],
       providers: [
         CreateUserHandler,
-        GeneratePasswordOnUserCreatedHandler,
+        FinalizeMissingPasswordService,
         {
           provide: USER_REPOSITORY_PORT,
           useValue: repo,
@@ -100,25 +114,27 @@ describe('Create user password smoke', () => {
   });
 
   it('should fail create when password update rejects', async () => {
+    const store = new Map<string, User>();
     const failingRepo: UserRepositoryPort = {
-      create: async (user) => user,
+      create: async (user) => {
+        store.set(user.id, user);
+        return user;
+      },
       updatePassword: async () => {
         throw new Error('forced update failure');
       },
-      findById: async (id) =>
-        User.create({
-          id,
-          username: 'x',
-          email: 'x@example.com',
-          passwordHash: null,
-        }),
+      findById: async (id) => store.get(id) ?? null,
+      findByEmail: async () => null,
+      delete: async (id) => {
+        store.delete(id);
+      },
     };
 
     const local = await Test.createTestingModule({
       imports: [CqrsModule],
       providers: [
         CreateUserHandler,
-        GeneratePasswordOnUserCreatedHandler,
+        FinalizeMissingPasswordService,
         { provide: USER_REPOSITORY_PORT, useValue: failingRepo },
         {
           provide: PASSWORD_GENERATOR_PORT,
@@ -141,6 +157,8 @@ describe('Create user password smoke', () => {
     await expect(
       bus.execute(new CreateUserCommand('fail', 'fail@example.com')),
     ).rejects.toThrow('forced update failure');
+
+    expect(store.size).toBe(0);
 
     await local.close();
   });

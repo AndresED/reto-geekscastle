@@ -47,19 +47,27 @@ After a user document is inserted, the system MUST publish a `UserCreatedEvent` 
 - **THEN** a user-created event is published with a signal that password is not missing
 
 ### Requirement: Generate secure password on missing password
-When the user-created flow indicates a missing password, the system MUST generate a cryptographically secure password of at least 16 characters, hash it, and update the user record via the repository port before the create HTTP response is finalized. If the user already has a password hash, the handler MUST NOT regenerate or overwrite it. If generation or update fails for a missing-password create, the create request MUST NOT succeed with HTTP 201.
+When the user-created flow indicates a missing password, the system MUST generate a cryptographically secure password of at least 16 characters, hash it, and update the user record via the repository port before the create HTTP response is finalized. Password generation/update for create MUST execute through a single awaited application path from the create command (not via dual invoke of the same Nest `@EventsHandler` plus explicit handler call). If the user already has a password hash, the finalize path MUST NOT regenerate or overwrite it. If generation or update fails for a missing-password create, the create request MUST NOT succeed with HTTP 201, and the system MUST compensate so the inserted user is not left as a durable record with a missing password hash (best-effort delete of the created user, or an equivalent failed-state that is not treated as a normal active user).
 
 #### Scenario: Missing password triggers generate and update before response
 - **WHEN** a client creates a user without a password
 - **THEN** the system generates a password, hashes it, persists the hash via the repository, and completes create only after that update succeeds
 
 #### Scenario: Existing password is not regenerated
-- **WHEN** the password-on-created handler runs for a user that already has a password hash OR receives password-missing=false
+- **WHEN** the password finalize path runs for a user that already has a password hash OR receives password-missing=false
 - **THEN** it MUST NOT generate a new password or overwrite the existing hash
 
 #### Scenario: Generate or update failure fails create
 - **WHEN** password generation or password update fails after user insert for a missing-password create
 - **THEN** the create operation MUST fail (not return HTTP 201 success)
+
+#### Scenario: Create command does not dual-invoke password finalize
+- **WHEN** create without password completes successfully
+- **THEN** password generate/hash/update runs exactly once for that request (no second mutating handler pass caused by EventBus re-entry)
+
+#### Scenario: Finalize failure compensates inserted user
+- **WHEN** password generation or password update fails after user insert for a missing-password create
+- **THEN** the system MUST attempt to remove the created user (or mark it failed) so a normal subsequent GET does not return an active user without password
 
 ### Requirement: Get user by id query
 The system MUST expose `GET /api/v1/users/:id` implemented as a Query + Handler in separate files, returning public user fields without password secrets.
@@ -92,4 +100,15 @@ Password generation MUST use a cryptographically secure RNG and MUST NOT use nai
 #### Scenario: Generator produces policy-compliant passwords
 - **WHEN** the password generator runs
 - **THEN** it returns a password of at least 16 characters using the configured charset without naive biased modulo mapping
+
+### Requirement: Unique user email on create
+The system MUST reject creating a user when another user already exists with the same email (after trim and case-insensitive normalization). The client MUST receive HTTP 409 Conflict and MUST NOT receive secrets.
+
+#### Scenario: Duplicate email returns 409
+- **WHEN** a client creates a user with an email that already belongs to an existing user
+- **THEN** the system responds with HTTP 409 and does not create a second user for that email
+
+#### Scenario: Distinct emails still create
+- **WHEN** a client creates a user with a new email
+- **THEN** the system responds with HTTP 201 as for a normal successful create
 

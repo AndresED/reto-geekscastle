@@ -8,7 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
 import { CreateUserCommand } from '../../application/commands/create-user.command';
 import { CreateUserResult } from '../../application/commands/handlers/create-user.handler';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id.query';
@@ -32,8 +32,8 @@ export class UsersController {
     private readonly queryBus: QueryBus,
   ) {}
 
+  /** Rate limit comes from ThrottlerModule (20/min in AppModule). */
   @Post()
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateUserDto): Promise<UserResponse> {
     const result = await this.commandBus.execute<

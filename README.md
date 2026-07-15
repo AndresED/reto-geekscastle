@@ -64,6 +64,10 @@ curl -s http://localhost:3000/api/v1/users/<id>
 
 `POST /api/v1/users` está limitado a **20 req/min** (HTTP 429 si se supera).
 
+Si falla la generación/persistencia del password tras el insert, el create no responde 201 y se intenta borrar el documento (best-effort; un crash a mitad podría dejar un huérfano residual).
+
+El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. Hay una ventana TOCTOU remota bajo creates concurrentes (check-then-create; suficiente para el challenge).
+
 ## Tests
 
 ```bash

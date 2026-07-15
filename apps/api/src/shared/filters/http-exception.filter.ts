@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
+  ConflictDomainError,
   DomainError,
   NotFoundDomainError,
   PersistenceDomainError,
@@ -60,6 +61,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
     if (error instanceof NotFoundDomainError) {
       return HttpStatus.NOT_FOUND;
+    }
+    if (error instanceof ConflictDomainError) {
+      return HttpStatus.CONFLICT;
     }
     if (error instanceof PersistenceDomainError) {
       return HttpStatus.BAD_GATEWAY;

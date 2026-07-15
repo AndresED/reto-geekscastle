@@ -7,16 +7,22 @@ describe('FirestoreUserRepository', () => {
   const set = jest.fn();
   const update = jest.fn();
   const get = jest.fn();
-  const doc = jest.fn(() => ({ set, update, get }));
-  const collection = jest.fn(() => ({ doc }));
+  const del = jest.fn();
+  const whereGet = jest.fn();
+  const limit = jest.fn(() => ({ get: whereGet }));
+  const where = jest.fn(() => ({ limit }));
+  const doc = jest.fn(() => ({ set, update, get, delete: del }));
+  const collection = jest.fn(() => ({ doc, where }));
   const db = { collection } as unknown as Firestore;
 
   let repo: FirestoreUserRepository;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    doc.mockReturnValue({ set, update, get });
-    collection.mockReturnValue({ doc });
+    doc.mockReturnValue({ set, update, get, delete: del });
+    limit.mockReturnValue({ get: whereGet });
+    where.mockReturnValue({ limit });
+    collection.mockReturnValue({ doc, where });
     repo = new FirestoreUserRepository(db);
   });
 
@@ -103,5 +109,36 @@ describe('FirestoreUserRepository', () => {
       }),
     );
     expect(updated.passwordHash).toBe('new-hash');
+  });
+
+  it('should delete user document', async () => {
+    del.mockResolvedValue(undefined);
+    await repo.delete('id-1');
+    expect(doc).toHaveBeenCalledWith('id-1');
+    expect(del).toHaveBeenCalled();
+  });
+
+  it('should find user by normalized email', async () => {
+    whereGet.mockResolvedValue({
+      empty: false,
+      docs: [
+        {
+          id: 'id-1',
+          data: () => ({
+            username: 'jane',
+            email: 'jane@example.com',
+            passwordHash: null,
+            passwordGenerated: false,
+            createdAt: '2026-07-15T00:00:00.000Z',
+            updatedAt: '2026-07-15T00:00:00.000Z',
+          }),
+        },
+      ],
+    });
+
+    const user = await repo.findByEmail('Jane@Example.com');
+
+    expect(where).toHaveBeenCalledWith('email', '==', 'jane@example.com');
+    expect(user?.id).toBe('id-1');
   });
 });

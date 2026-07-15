@@ -1,4 +1,5 @@
 import {
+  ConflictDomainError,
   NotFoundDomainError,
   PersistenceDomainError,
   ValidationDomainError,
@@ -13,6 +14,12 @@ export class UserNotFoundError extends NotFoundDomainError {
 export class UserPersistenceError extends PersistenceDomainError {
   constructor(message: string) {
     super(message);
+  }
+}
+
+export class UserEmailConflictError extends ConflictDomainError {
+  constructor(email: string) {
+    super(`Email already registered: ${email}`);
   }
 }
 

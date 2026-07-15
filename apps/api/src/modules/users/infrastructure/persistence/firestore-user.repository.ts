@@ -80,20 +80,53 @@ export class FirestoreUserRepository implements UserRepositoryPort {
       if (!snap.exists) {
         return null;
       }
-      const data = snap.data() as UserDoc;
-      return User.create({
-        id: snap.id,
-        username: data.username,
-        email: data.email,
-        passwordHash: data.passwordHash,
-        passwordGenerated: data.passwordGenerated,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt),
-      });
+      return this.toUser(snap.id, snap.data() as UserDoc);
     } catch (error) {
       throw new UserPersistenceError(
         `Failed to find user: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    try {
+      const normalized = email.trim().toLowerCase();
+      const snap = await this.db
+        .collection(this.collection)
+        .where('email', '==', normalized)
+        .limit(1)
+        .get();
+      if (snap.empty) {
+        return null;
+      }
+      const doc = snap.docs[0];
+      return this.toUser(doc.id, doc.data() as UserDoc);
+    } catch (error) {
+      throw new UserPersistenceError(
+        `Failed to find user by email: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      await this.db.collection(this.collection).doc(id).delete();
+    } catch (error) {
+      throw new UserPersistenceError(
+        `Failed to delete user: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private toUser(id: string, data: UserDoc): User {
+    return User.create({
+      id,
+      username: data.username,
+      email: data.email,
+      passwordHash: data.passwordHash,
+      passwordGenerated: data.passwordGenerated,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+    });
   }
 }

@@ -18,3 +18,7 @@ export class NotFoundDomainError extends DomainError {
 export class PersistenceDomainError extends DomainError {
   readonly code = 'PERSISTENCE_ERROR';
 }
+
+export class ConflictDomainError extends DomainError {
+  readonly code = 'CONFLICT';
+}

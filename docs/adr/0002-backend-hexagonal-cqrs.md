@@ -8,10 +8,11 @@ Aceptado
 
 Nest `EventBus.publish` **no espera** a los `@EventsHandler`. Para cumplir el contrato HTTP:
 
-1. `CreateUserHandler` **await** `GeneratePasswordOnUserCreatedHandler.handle(event)` en el request path.
-2. Luego publica el evento (subscribers / replay); el handler es **idempotente** si ya hay `passwordHash`.
-3. Si generate/update falla tras el insert: el create **falla** (no `201`). Puede quedar un documento huérfano sin hash (sin compensación delete en v1).
-4. Create sin password solo responde tras reload con `hasPassword: true`.
+1. `CreateUserHandler` **await** `FinalizeMissingPasswordService.execute(userId)` en el request path cuando falta password (único ejecutor mutante).
+2. Luego publica `UserCreatedEvent` como señal de dominio / audit — **sin** `@EventsHandler` que vuelva a generar password.
+3. Finalize es **idempotente** si ya hay `passwordHash`.
+4. Si generate/update falla tras el insert: el create **falla** (no `201`) y se hace **best-effort delete** del documento. Si el delete también falla (o hay crash a mitad), puede quedar huérfano residual.
+5. Create sin password solo responde tras reload con `hasPassword: true`.
 
 ## Fecha
 
@@ -40,7 +41,7 @@ Un solo use-case file (estilo Pokemon referencial) **no** cumple la convención 
 | Domain | Entidad `User`, errors, ports, events (sin Nest/Firebase) |
 | Persistencia port | `UserRepositoryPort` |
 | Password ports | `PasswordGeneratorPort`, `PasswordHasherPort` |
-| Evento del reto | `UserCreatedEvent` → handler genera password si falta y actualiza |
+| Evento del reto | `UserCreatedEvent` (señal); finalize de password en application service await |
 | Validación HTTP | `ValidationPipe` global + DTO |
 | Errores | Domain errors → `HttpExceptionFilter` |
 | Tests | Jest; mocks de ports en handlers |
@@ -52,17 +53,14 @@ Un solo use-case file (estilo Pokemon referencial) **no** cumple la convención 
 1. `UsersController` valida `CreateUserDto` → `CreateUserCommand`.
 2. `CreateUserHandler`:
    - Si viene password: hashea y `repository.create` con hash.
-   - Si no: `repository.create` sin password.
-   - Construye `UserCreatedEvent { userId, passwordMissing }`.
-   - **Await** `GeneratePasswordOnUserCreatedHandler.handle(event)` (request path).
-   - Publica el evento en `EventBus` (fire-and-forget; idempotente al reentrar).
+   - Si no: `repository.create` sin password → **await** `FinalizeMissingPasswordService`.
+   - Publica `UserCreatedEvent` (notificación; no re-ejecuta generate).
    - Si faltaba password: `findById` y devolver usuario finalizado.
-3. `GeneratePasswordOnUserCreatedHandler`:
-   - Si `!passwordMissing` → return.
+3. `FinalizeMissingPasswordService`:
    - Si ya tiene hash → return (idempotencia).
    - Si falta → generate → hash → `repository.updatePassword`.
 
-Esto cumple: “evento al insertar”, “generar password seguro”, “actualizar registro”.
+Esto cumple: “evento al insertar”, “generar password seguro”, “actualizar registro”, un solo path mutante.
 
 ### Estructura de archivos (ejemplo vinculante en espíritu)
 
@@ -81,7 +79,7 @@ modules/users/
 │   ├── commands/handlers/create-user.handler.ts
 │   ├── queries/get-user-by-id.query.ts
 │   ├── queries/handlers/get-user-by-id.handler.ts
-│   └── events/handlers/generate-password-on-user-created.handler.ts
+│   └── finalize-missing-password.service.ts
 ├── infrastructure/
 │   ├── persistence/firestore-user.repository.ts
 │   ├── crypto/crypto-password.generator.ts
