@@ -2,102 +2,119 @@
 
 [![CI](https://github.com/AndresED/reto-geekscastle/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresED/reto-geekscastle/actions/workflows/ci.yml)
 
-API **NestJS** (hexagonal + **CQRS**) con **Firebase Firestore**, orquestada con **Nx lite** e IaC **Terraform lite**.
+## 1. Qué es este reto
 
-Si el create llega **sin** `password`, el sistema genera uno seguro, lo hashea con **bcrypt** y lo guarda **antes** de responder `201` (`FinalizeMissingPasswordService`, en el path del request). Después publica `UserCreatedEvent` solo como aviso de dominio/auditoría: el `EventBus` de Nest **no espera** a los `@EventsHandler`, así que la generación **no** ocurre ahí ([ADR-0002](./docs/adr/0002-backend-hexagonal-cqrs.md)).
+Es una entrega de backend para el challenge de **GeeksCastle**: una API de **usuarios** donde puedes **crear** un usuario, **consultarlo** y, si al crear **no mandas password**, el sistema te genera uno seguro, lo guarda hasheado y te responde recién cuando eso ya quedó listo.
 
-**Deadline de entrega:** antes del **2026-07-16 12:00 CDMX**.
+El enunciado pide NestJS, TypeScript, Firebase y Clean Architecture. Además, en el proceso se pidió experiencia con **Nx** y **Terraform**: aquí van en modo *lite* (workspace + IaC acotada), sin distraer del núcleo del challenge.
 
-## Stack
+**Fecha de entrega:** antes del **16 de julio 2026, 12:00 CDMX**.
 
-| Pieza | Detalle |
-|-------|---------|
-| App | `apps/api` (NestJS 11, TypeScript strict) |
-| Workspace | Nx lite (`nx serve/build/test api`) |
-| Persistencia | Firestore via `firebase-admin` + emulator |
-| Seguridad | Helmet + throttle API **20 req/min** por IP (`/health` exento) |
-| OpenAPI | Swagger UI en `/api/docs` (+ `/api/docs-json`) |
-| Tests | Jest ≥ 80 % statements + smoke create→password |
-| CI | GitHub Actions — API build/`test:cov` + Terraform validate |
-| IaC | `infra/` Terraform (validate/plan; apply opcional) |
+No hace falta desplegar a la nube para evaluar: la demo corre en tu máquina con el **emulador de Firestore**.
 
-## Arquitectura (breve)
+---
 
-El módulo `users` está armado con **arquitectura hexagonal** (Clean Architecture) y **CQRS**:
+## 2. Si estás revisando esto (empieza acá)
 
-| Capa | Qué hace |
-|------|----------|
-| `domain/` | Entidad `User`, puertos, errores y el evento `UserCreatedEvent`. Sin Nest ni Firebase. |
-| `application/` | Comandos, consultas y handlers (cada uno en su archivo). También el servicio que completa el password. |
-| `infrastructure/` | Firestore, bcrypt / generador seguro, controller HTTP y DTOs. |
-| HTTP | Controllers finos: validan el body y delegan al `CommandBus` / `QueryBus`. |
+El código te cuenta *qué* hace la API. La documentación te cuenta *por qué* está armada así. Eso importa cuando evalúas arquitectura y decisiones.
 
-**Alta sin password** (sin loops ni doble escritura):
+| Prioridad | Dónde | Para qué |
+|-----------|--------|----------|
+| 1 | **[Wiki](./docs/wiki/README.md)** | Explicación en lenguaje claro: hexagonal, CQRS, onboarding, Pub/Sub a futuro |
+| 2 | **[ADRs](./docs/adr/)** | Decisiones cortas y vinculantes (stack, capas, Firebase, seguridad, CI, Nx, Terraform) |
+| 3 | Este README | Levantar, probar con `curl` y panorama de entrega |
+| 4 | [Swagger](http://localhost:3000/api/docs) | Contrato HTTP cuando la API ya está arriba |
+| 5 | [Historias US](./docs/requirements/reto.md) | Criterios de aceptación US-01…US-22 |
 
-1. Se guarda el usuario en una transacción (`emails/{email}` + `users/{id}`).
-2. Se espera a `FinalizeMissingPasswordService`: genera el password, lo hashea con bcrypt y actualiza el documento.
-3. Se publica `UserCreatedEvent` solo como aviso de auditoría (`UserCreatedAuditHandler` escribe un log). El `EventBus` de Nest **no espera** a los handlers, así que ahí **no** se vuelve a mutar el password.
+**Lectura sugerida de la wiki (≈45 min):**
 
-Más detalle: [**wiki** (analogías + onboarding)](./docs/wiki/README.md), [`docs/adr/0002`](./docs/adr/0002-backend-hexagonal-cqrs.md), [finalize await vs `@EventsHandler`](./docs/architecture/finalize-await-vs-events-handler.md), [`docs/infra/`](./docs/infra/).
+1. [Camino del desarrollador](./docs/wiki/camino-del-desarrollador.md)
+2. [Arquitectura](./docs/wiki/arquitectura.md)
+3. [Toma de decisiones](./docs/wiki/toma-de-decisiones.md)
 
-## Prerrequisitos
+**ADR que más te conviene abrir primero:** [ADR-0002 — Hexagonal + CQRS](./docs/adr/0002-backend-hexagonal-cqrs.md) (incluye por qué el password se finaliza con `await` y el evento es solo aviso).
+
+Si la wiki y un ADR no coinciden, **manda el ADR**.
+
+---
+
+## 3. Qué puedes hacer con la API
+
+| Acción | Endpoint | En una frase |
+|--------|----------|--------------|
+| Crear usuario | `POST /api/v1/users` | Con o sin `password`; si falta, se genera y se hashea antes del `201` |
+| Ver uno | `GET /api/v1/users/:id` | Datos públicos; nunca password ni hash |
+| Listar | `GET /api/v1/users` | Hasta 100 filas; si no hay nadie, `[]` |
+| Salud | `GET /api/v1/health` | Para ver que el proceso vive |
+
+Otras reglas útiles:
+
+- El **email** es único → duplicado = `409`.
+- Las rutas `/users` tienen **límite de 20 peticiones/min por IP** → exceso = `429`.
+- `health` **no** entra en ese cupo.
+- Login / JWT **no** forman parte de este MVP ([ADR-0005](./docs/adr/0005-seguridad-passwords-y-api.md)).
+
+---
+
+## 4. Cómo levantarlo
+
+### Qué necesitas
 
 - Node.js 20+
 - npm
-- Firebase CLI (`npm i -g firebase-tools`) para emulator
-- Terraform (opcional en local; validado en CI)
+- [Firebase CLI](https://firebase.google.com/docs/cli) (`npm i -g firebase-tools`)
+- Terraform solo si quieres mirar el IaC (en CI ya se valida)
 
-## Setup rápido
+### Instalar
 
 ```bash
 cp .env.example .env
-npm install                          # Nx (raíz)
+npm install                          # workspace Nx (raíz)
 cd apps/api && npm install && cd ../..
 ```
 
-### Emulator + API
+### Encender emulador + API
+
+Necesitas **dos terminales**:
 
 ```bash
-# terminal 1
+# terminal 1 — datos
 firebase emulators:start --only firestore
 
-# terminal 2
+# terminal 2 — API
 npm run api:serve
-# o: cd apps/api && npm run start:dev
 ```
 
-Health: `GET http://localhost:3000/api/v1/health`  
-Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs) (OpenAPI JSON: `/api/docs-json`)
+Cuando esté arriba:
 
-### Crear usuario
+- Health: http://localhost:3000/api/v1/health  
+- Swagger: http://localhost:3000/api/docs  
+
+Si algo no arranca, salta a [Troubleshooting](#9-troubleshooting).
+
+---
+
+## 5. Probarlo rápido (`curl`)
 
 ```bash
-# sin password → genera hash seguro y responde con hasPassword:true
+# Alta sin password → el sistema genera y hashea; hasPassword queda en true
 curl -s -X POST http://localhost:3000/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"jane","email":"jane@example.com"}'
 
-# con password
+# Alta con password
 curl -s -X POST http://localhost:3000/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"john","email":"john@example.com","password":"secret123"}'
 
-# leer (nunca expone password/hash)
+# Leer (cambia <id> por el que te devolvió el create)
 curl -s http://localhost:3000/api/v1/users/<id>
 
-# listar (máx. 100 filas; array vacío = []; orden por createdAt)
+# Listar
 curl -s http://localhost:3000/api/v1/users
 ```
 
-Las rutas de **users** (`POST` / `GET` list / `GET` by id) comparten un rate limit de **20 req/min por IP** (HTTP 429 si se supera). `GET /api/v1/health` está exento.
-
-Si falla la generación/persistencia del password tras el insert, el create no responde 201 y se intenta borrar el documento (best-effort; un crash a mitad podría dejar un huérfano residual).
-
-El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. Claim `emails/{email}` + doc `users/{id}` se escriben en la misma **transacción** Firestore (sin claim huérfano si falla el write del user).
-
-### Respuestas de error (curl)
-
-Contrato completo en Swagger. Ejemplos rápidos:
+### Errores que puedes provocar
 
 ```bash
 # 400 — email inválido
@@ -105,161 +122,184 @@ curl -s -X POST http://localhost:3000/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"bad","email":"not-an-email"}'
 
-# 409 — email duplicado (ejecutar dos veces el mismo email)
+# 409 — email ya registrado (manda dos veces el mismo)
 curl -s -X POST http://localhost:3000/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"dup","email":"dup@example.com"}'
 
-# 404 — usuario inexistente
+# 404 — id que no existe
 curl -s http://localhost:3000/api/v1/users/00000000-0000-0000-0000-000000000000
-
-# 429 — superar 20 req/min en rutas /users (POST o GET)
 ```
 
-Cuerpos de error: validación → `{ statusCode, message[] }`; dominio → `{ statusCode, code, message }` (`NOT_FOUND`, `CONFLICT`, etc.).
+El detalle de esquemas está en Swagger. La historia “create → password listo → aviso de dominio” está explicada sin rodeos en la [wiki de arquitectura](./docs/wiki/arquitectura.md) y en el [ADR-0002](./docs/adr/0002-backend-hexagonal-cqrs.md).
 
-## Troubleshooting
+---
 
-| Síntoma | Causa probable | Qué hacer |
-|---------|----------------|-----------|
-| API no arranca / error Firebase | Falta `.env` o `FIREBASE_PROJECT_ID` | `cp .env.example .env`; debe coincidir con `.firebaserc` (`demo-reto-geekscastle`) |
-| `ECONNREFUSED` / 502 al crear user | Emulator apagado o host/puerto mal | Terminal 1: `firebase emulators:start --only firestore`; `.env`: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` |
-| Puerto 8080 o 3000 en uso | Otro proceso | Cambiar puerto emulator en `firebase.json` y actualizar `.env` / `PORT` |
-| Swagger UI en blanco | CSP estricto | Ya relajado en `main.ts` para `/api/docs`; recargar tras `npm run api:serve` |
-| `GET /health` ok pero writes fallan | Health no prueba Firestore | Verificar emulator UI en `:4000` y logs de la API |
+## 6. Cómo está pensada la solución (breve)
 
-**Nota:** `firestore.rules` incluye una regla abierta temporal (expira 2026-08-14) generada por Firebase CLI para demo local. La API usa **Admin SDK** (backend); no depende de reglas de cliente para el flujo del reto.
+Ordenada por capas: el **dominio** (qué es un usuario) no sabe de Nest ni de Firebase; la **aplicación** orquesta comandos y consultas (CQRS); la **infraestructura** habla con Firestore, bcrypt y HTTP.
 
-## Tests
+Flujo del create **sin** password, en corto:
+
+1. Se guarda el usuario (email único en una transacción).
+2. Se espera a que el password quede generado, hasheado y persistido.
+3. Recién ahí responde `201`.
+4. Después se publica un **aviso** de dominio (hoy: log de auditoría). Ese aviso **no** vuelve a tocar el password.
+
+¿Por qué no se genera el password “en el evento” de Nest? Porque el `EventBus` no garantiza esperar a los handlers: si lo hicieras ahí, podrías mentir el `201`. Eso está escrito a propósito en la wiki y en:
+
+- [finalize await vs `@EventsHandler`](./docs/architecture/finalize-await-vs-events-handler.md)
+- [ADR-0002](./docs/adr/0002-backend-hexagonal-cqrs.md)
+
+Para el “mapa mental” y analogías (restaurante, ventanillas, enchufes): **[docs/wiki/arquitectura.md](./docs/wiki/arquitectura.md)**.
+
+---
+
+## 7. Tests y CI
 
 ```bash
 npm run test:cov
 # o: cd apps/api && npm run test:cov
 
-# smoke create-without-password → persisted hash
+# smoke: create sin password → hash persistido
 cd apps/api && npm run test:smoke
 ```
 
-Umbral: `coverageThreshold.global.statements: 80`.
+Umbral de cobertura: **80 %** de statements (Jest + CI).
 
-## CI
+GitHub Actions (`.github/workflows/ci.yml`):
 
-`.github/workflows/ci.yml`:
+- **api** — install → build → `test:cov`
+- **terraform** — `fmt` + `validate` en `infra/`
 
-- **api** — Node 20: `npm ci` → `build` → `test:cov`
-- **terraform** — `fmt -check` + `init -backend=false` + `validate` en `infra/`
+Detalle: [ADR-0004](./docs/adr/0004-ci-github-actions.md).
 
-## Terraform lite
+---
 
-Ver [`infra/README.md`](./infra/README.md). El challenge se demuestra con **emulator**, no con `terraform apply`.
+## 8. Stack (cuando ya viste el flujo)
 
-## Cómo lo desplegaría en GCP
+| Pieza | Detalle |
+|-------|---------|
+| App | `apps/api` — NestJS 11, TypeScript strict |
+| Workspace | Nx lite (`nx serve/build/test api`) — [ADR-0006](./docs/adr/0006-nx-workspace-lite.md) |
+| Datos | Firestore (Admin SDK) + emulator — [ADR-0003](./docs/adr/0003-firebase-firestore-emulator.md) |
+| Seguridad | Helmet + throttle 20/min en `/users` — [ADR-0005](./docs/adr/0005-seguridad-passwords-y-api.md) |
+| Contrato | Swagger en `/api/docs` |
+| IaC | Terraform lite en `infra/` — [ADR-0007](./docs/adr/0007-terraform-firebase-lite.md) |
 
-> Solo documentación. Para este reto **no** hay que subir nada a la nube: la demo se hace con el emulador y `npm run api:serve`.
+Terraform: ver [`infra/README.md`](./infra/README.md). La demo del challenge es con **emulator**, no con `terraform apply`.
 
-En producción usaría **Cloud Run** para la API, **Firestore** para los datos y, más adelante, **Pub/Sub** + una **Cloud Function** (o un worker pequeño en Cloud Run) para lo asíncrono.
+---
 
-### Decisiones
+## 9. Troubleshooting
 
-- **Cloud Run para Nest.** La API es un proceso HTTP con Nest, CQRS, Swagger, Helmet y rate limit. Encaja bien en un contenedor que escala (incluso a cero) y trae HTTPS sin montar un cluster.
-- **Firestore nativo.** Misma base que en local, vía Admin SDK. El Terraform de `infra/` ya deja armada la base Native.
-- **Pub/Sub / Cloud Functions para el “después”.** En local el evento vive dentro de Nest. En prod sacaría la auditoría / notificaciones del request HTTP, **sin** regenerar el password en el consumidor.
-- **No pondría Nest entero en Cloud Functions.** El cold start y el modelo de ejecución no ayudan a este tipo de app. Una Function sí sirve como worker ligero escuchando Pub/Sub.
+| Síntoma | Causa probable | Qué hacer |
+|---------|----------------|-----------|
+| La API no arranca / error Firebase | Falta `.env` o project id | `cp .env.example .env`; debe cuadrar con `.firebaserc` (`demo-reto-geekscastle`) |
+| `ECONNREFUSED` / 502 al crear | Emulator apagado | Terminal 1 con `firebase emulators:start --only firestore`; `.env`: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` |
+| Puerto 8080 o 3000 ocupado | Otro proceso | Cambia puerto en `firebase.json` / `PORT` |
+| Swagger en blanco | CSP | Ya relajado en `main.ts` para `/api/docs`; recarga tras `npm run api:serve` |
+| Health ok pero el create falla | Health no prueba Firestore | Mira la UI del emulator (`:4000`) y los logs de la API |
 
-### Esquema
+**Nota:** `firestore.rules` trae una regla abierta temporal de demo (caduca 2026-08-14). La API usa **Admin SDK**; el flujo del reto no depende de reglas de cliente.
+
+Si falla generar/persistir el password después del insert, **no** hay `201` y se intenta borrar el documento (best-effort). Detalle en ADR-0002.
+
+---
+
+## 10. Cómo lo desplegaría en GCP (solo diseño)
+
+> No hace falta subirlo a la nube para este reto. Esto responde a “¿cómo lo pondrías en producción?”.
+
+Usaría **Cloud Run** (API Nest), **Firestore** (datos) y, más adelante, **Pub/Sub** + un worker ligero para lo asíncrono (auditoría, mails, métricas) — **sin** regenerar password en el consumidor.
 
 ```text
-Cliente (HTTPS)
-       │
-       ▼
-  Cloud Armor / API Gateway   ← opcional, frente a Internet
-       │
-       ▼
-  Cloud Run  (API Nest)
-       │  Admin SDK + cuenta de servicio del propio Cloud Run
-       ├─────────────►  Firestore  (users, emails)
-       │
-       │  cuando el create ya terminó bien (password listo)
-       └─────────────►  Pub/Sub  topic: user.created
-                              │
-                              ▼
-                     Cloud Function (o otro Cloud Run)
-                     log / correo / métricas
-                     (idempotente; no toca el password)
+Cliente → Cloud Run (Nest) → Firestore
+                 │
+                 └─► Pub/Sub → Function/worker (solo efectos de observación)
 ```
 
-### Local frente a producción
-
-| | Local (lo que entregamos) | GCP |
-|--|---------------------------|-----|
-| Datos | Emulador en `:8080` | Firestore del proyecto |
-| Cómo se autentica Admin SDK | Con `FIRESTORE_EMULATOR_HOST` | Cuenta de servicio de Cloud Run (ADC); sin JSON en el repo |
-| Config | Archivo `.env` | Variables del servicio + Secret Manager |
-| Variable del emulador | Obligatoria | **No debe existir** |
-| Evento | `EventBus` de Nest en el mismo proceso | Mensaje a Pub/Sub **después** de completar el password |
+| | Local (lo entregado) | GCP |
+|--|----------------------|-----|
+| Datos | Emulator `:8080` | Firestore del proyecto |
+| Auth Admin SDK | `FIRESTORE_EMULATOR_HOST` | Cuenta de servicio de Cloud Run (ADC) |
+| Evento | `EventBus` en el mismo proceso | Mensaje Pub/Sub **después** del password listo |
 | Secretos | Fuera de Git | Secret Manager / IAM |
 
-### Orden práctico para subirla
+Más narrativa y pasos: abajo se mantiene el detalle; el “por qué” de sacar el evento a Pub/Sub está en la wiki: [Futuro Pub/Sub](./docs/wiki/futuro-pubsub.md).
 
-1. Crear el proyecto GCP, activar facturación y elegir región (la misma idea que en `infra/`).
-2. Levantar Firestore con `terraform -chdir=infra apply` (o a mano en la consola). Colecciones: `users` y `emails`.
-3. Crear una **cuenta de servicio** solo para Cloud Run, con lo mínimo: lectura/escritura en Firestore y, si emite eventos, permiso de publicar en Pub/Sub. Sin bajar un JSON al repositorio.
-4. Empaquetar la API en una imagen Docker en dos etapas (build → `node dist/main`), usuario no root, y subirla a **Artifact Registry**.
-5. Desplegar esa imagen en **Cloud Run** con:
-   - `PORT` (Cloud Run lo pone; Nest lo lee),
-   - `FIREBASE_PROJECT_ID` = id real del proyecto,
-   - **sin** `FIRESTORE_EMULATOR_HOST`,
-   - secretos (si aparecen) montados desde Secret Manager.
-6. Usar `GET /api/v1/health` como chequeo. Con cero instancias se ahorra; con una se gana latencia en frío.
-7. Ampliar el CI que ya tenemos: además del build y `test:cov`, construir la imagen, empujarla al registry y hacer `gcloud run deploy` solo desde `main` o tags. Terraform validate ya corre en Actions.
-8. Seguir la app con Cloud Logging, Error Reporting y alertas de 5xx / latencia.
+### Decisiones de despliegue
 
-### Eventos en la nube (sin ciclos)
+- **Cloud Run** para Nest (proceso HTTP, escala, HTTPS).
+- **Firestore nativo** vía Admin SDK; Terraform en `infra/` deja la base preparada.
+- **Pub/Sub / Function** para el “después” del request; mismo contrato que el audit local.
+- Nest completo en Cloud Functions: no (cold start / modelo poco amigable). Una Function sí como oyente.
 
-Misma regla que en local ([ADR-0002](./docs/adr/0002-backend-hexagonal-cqrs.md)):
+### Orden práctico
 
-1. Se crea el usuario (y el claim del email).
-2. Se espera a que `FinalizeMissingPasswordService` genere y persista el hash. **Ese es el único camino que escribe el password.**
-3. Se responde **201** cuando el documento ya quedó listo.
-4. Recién ahí se publica `user.created` en Pub/Sub.
+1. Proyecto GCP + región (alineada a `infra/`).
+2. Firestore con `terraform -chdir=infra apply` (o consola). Colecciones `users` y `emails`.
+3. Cuenta de servicio de Cloud Run con lo mínimo (Firestore ± Pub/Sub publish). Sin JSON en el repo.
+4. Imagen Docker multi-stage → Artifact Registry.
+5. Deploy Cloud Run: `PORT`, `FIREBASE_PROJECT_ID`, **sin** `FIRESTORE_EMULATOR_HOST`, secretos desde Secret Manager.
+6. Health check en `/api/v1/health`.
+7. CI: además de build/tests, imagen + deploy desde `main`/tags.
+8. Logging / Error Reporting / alertas 5xx.
 
-Quien consuma el mensaje (Function o worker) debe poder **correr dos veces el mismo evento sin romper nada** (por ejemplo claveando por `userId` + id del mensaje) y limitarse a observar: auditoría, correo de bienvenida, métricas. Si ahí se regenerara el password, volvemos a los ciclos y a la doble mutación que el reto pide evitar.
+### Eventos en la nube (misma regla que en local)
 
-Hoy el `UserCreatedAuditHandler` es el prototipo en proceso. El mensaje de Pub/Sub puede llevar el mismo contenido (`userId`, si faltaba password).
+1. Create (+ claim de email).  
+2. Await finalize del password.  
+3. Responder `201`.  
+4. Publicar `user.created`.  
+
+Consumidor **idempotente** y sin tocar `passwordHash`. Hoy el prototipo es `UserCreatedAuditHandler` en proceso.
 
 ### Seguridad operativa
 
-- La imagen no lleva `.env` ni archivos de cuenta de servicio.
-- La cuenta de Cloud Run solo con los roles que necesita.
-- El rate limit de las rutas `/users` (20/min por IP) se queda en la app; si crece el tráfico, se suma algo en el borde (p. ej. Cloud Armor). `/health` no cuenta para ese cupo.
-- Login de clientes no entra en este MVP (ver ADR-0005). En prod típico iría JWT / Identity Platform delante de Cloud Run.
-- Las reglas de Firestore para clientes **no** reemplazan al Admin SDK: en este diseño escribe el backend.
+- Sin `.env` ni service accounts en la imagen.
+- IAM mínimo en Cloud Run.
+- Throttle en app; en borde se puede sumar Cloud Armor.
+- Auth de clientes fuera de este MVP.
+- Reglas Firestore de cliente ≠ Admin SDK del backend.
 
-## Documentación
+---
 
-### Wiki (empezar aquí si eres nuevo en el repo)
+## 11. Mapa de documentación
 
-Guía en español: hexagonal + CQRS con analogías, cómo decidimos, Pub/Sub a futuro y el camino para mantener o agregar features.
-
-| Doc | Contenido |
-|-----|-----------|
-| [docs/wiki/](./docs/wiki/README.md) | Índice de la wiki |
-| [Camino del desarrollador](./docs/wiki/camino-del-desarrollador.md) | Onboarding y recetas command/query |
-| [Arquitectura](./docs/wiki/arquitectura.md) | Hexagonal + CQRS |
-| [Toma de decisiones](./docs/wiki/toma-de-decisiones.md) | ADR vs OpenSpec vs wiki |
-| [Futuro Pub/Sub](./docs/wiki/futuro-pubsub.md) | Cómo sacar eventos de Nest sin romper el `201` |
-
-### Resto
+### Wiki — guía principal
 
 | Doc | Contenido |
 |-----|-----------|
-| [docs/requirements/reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 |
-| [docs/adr/](./docs/adr/) | ADRs 0001–0007 |
-| [docs/architecture/finalize-await-vs-events-handler.md](./docs/architecture/finalize-await-vs-events-handler.md) | Por qué finalize await ≠ `@EventsHandler` |
-| [docs/infra/](./docs/infra/) | Modelo Firestore + C4 |
-| [openspec/specs/](./openspec/specs/) | Specs vivas (OpenSpec) |
-| [openspec/changes/archive/](./openspec/changes/archive/) | Changes archivados |
-| [docs/reviews/latest.md](./docs/reviews/latest.md) | Último code review |
+| [Índice](./docs/wiki/README.md) | Por dónde empezar |
+| [Camino del desarrollador](./docs/wiki/camino-del-desarrollador.md) | Onboarding y cómo agregar features |
+| [Arquitectura](./docs/wiki/arquitectura.md) | Hexagonal + CQRS con analogías |
+| [Toma de decisiones](./docs/wiki/toma-de-decisiones.md) | Cuándo ADR / OpenSpec / wiki |
+| [Futuro Pub/Sub](./docs/wiki/futuro-pubsub.md) | Evolución cloud sin romper el `201` |
+
+### ADRs — decisiones que manda el diseño
+
+| ADR | Tema |
+|-----|------|
+| [0001](./docs/adr/0001-estructura-proyecto-nestjs.md) | Estructura del repo / Nest |
+| [0002](./docs/adr/0002-backend-hexagonal-cqrs.md) | Hexagonal + CQRS + finalize vs evento |
+| [0003](./docs/adr/0003-firebase-firestore-emulator.md) | Firestore + emulator |
+| [0004](./docs/adr/0004-ci-github-actions.md) | CI |
+| [0005](./docs/adr/0005-seguridad-passwords-y-api.md) | Passwords, Helmet, throttle |
+| [0006](./docs/adr/0006-nx-workspace-lite.md) | Nx lite |
+| [0007](./docs/adr/0007-terraform-firebase-lite.md) | Terraform lite |
+
+### Más
+
+| Doc | Contenido |
+|-----|-----------|
+| [reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 |
+| [finalize vs EventsHandler](./docs/architecture/finalize-await-vs-events-handler.md) | Diseño profundo del password |
+| [docs/infra/](./docs/infra/) | Modelo de datos + C4 |
+| [openspec/specs/](./openspec/specs/) | Specs vivas |
+| [reviews/latest](./docs/reviews/latest.md) | Último code review interno |
+
+---
 
 ## Project board
 
