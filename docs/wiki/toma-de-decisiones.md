@@ -1,99 +1,99 @@
 # Toma de decisiones
 
-Cómo elegimos si cambiamos algo, dónde lo dejamos escrito y cuánta formalidad le ponemos — sin inventar rituales.
+Cómo elegimos un cambio y dónde lo dejamos escrito, sin alargar de más el proceso.
 
 ---
 
-## 1. Qué papel juega cada cosa
+## 1. Qué documento usamos para qué
 
-| Artefacto | Se parece a… | Úsalo cuando… |
-|-----------|--------------|---------------|
-| **ADR** | Permiso de obra | La decisión tiene que sobrevivir a quien la tomó |
-| **OpenSpec** | Plano + lista de tareas | El cambio se puede comprobar con criterios |
-| **Wiki** | Guía para quien llega | Quieres explicar el porqué con calma |
-| **Review** | Informe de inspección | Quieres una foto del código en un momento |
+| Documento | Para qué sirve | Cuándo lo usas |
+|-----------|----------------|----------------|
+| **ADR** | Deja la decisión por escrito para no discutirla en cada PR | Tiene que quedar clara aunque cambie el equipo |
+| **OpenSpec** | Plan del cambio y tareas que se pueden revisar | El cambio tiene criterios claros de “listo” |
+| **Wiki** | Explica el porqué con calma | Alguien nuevo o el evaluador necesita contexto |
+| **Review** | Resume cómo estaba el código en ese momento | Quieres dejar constancia de una revisión |
 
-Si el cambio es gordo y solo queda en el código (o solo en la wiki), mañana nadie sabe si fue accidente o decisión.
+Si el cambio es grande y solo queda en el código (o solo en la wiki), mañana nadie sabe si fue accidente o decisión.
 
 ---
 
-## 2. Cuánta formalidad
+## 2. Según el tamaño del cambio
 
 ```text
-¿Typo, comentario o test obvio que faltaba?
-        → PR chico, sin OpenSpec
+¿Es un error de texto, un comentario o un test que claramente faltaba?
+        → Pull request pequeño, sin OpenSpec
 
-¿Cambia lo que ve el cliente, una regla o seguridad?
+¿Cambia lo que ve el cliente, una regla de negocio o algo de seguridad?
         → OpenSpec (propose → apply → archive)
-          + README / Swagger si hace falta
+          y actualiza README / Swagger si hace falta
 
-¿Cambia cómo armamos el sistema (stack, patrón, capas)?
-        → ADR nuevo o enmienda + actualizar la wiki
+¿Cambia la forma de construir el sistema (stack, patrón, límites entre capas)?
+        → ADR nuevo o actualización del ADR, y actualiza la wiki
 ```
 
-### Cosas que ya decidimos aquí
+### Decisiones que ya tomamos en este proyecto
 
-| Decisión | Dónde | Por qué en corto |
-|----------|--------|------------------|
-| Hexagonal + CQRS + un archivo por handler | ADR-0002 | Regla del módulo `users` |
-| Password con await, no en EventsHandler | ADR-0002 + doc architecture | Contrato HTTP + EventBus de Nest |
-| Firestore + emulador | ADR-0003 | Persistencia del reto |
-| Throttle 20/min en `/users` | ADR-0005 | API sin login: fácil de abusar |
-| Listado máx. 100 | OpenSpec cap list | Coste / abuso |
-| Cloud Run + Pub/Sub “después” | README + wiki | Roadmap, aún sin código |
-
----
-
-## 3. Principios que cortan la discusión
-
-1. **No inventes de más.** No partimos en microservicios; sí separamos capas (reto + equipo).
-2. **El `201` manda.** Si responde OK, el estado de negocio ya está listo.
-3. **La infra no se cuela al dominio.** Mejor un puerto torpe que un `import` de Firebase en application.
-4. **Lo diferido se puede repetir.** Finalize y futuros consumidores Pub/Sub → idempotentes.
-5. **Un OpenSpec, un tema.** No mezcles “listar” con “rediseñar auth”.
+| Decisión | Dónde quedó | Motivo |
+|----------|-------------|--------|
+| Hexagonal + CQRS + un archivo por handler | ADR-0002 | Así trabajamos el módulo `users` |
+| Password con `await`, no en el EventsHandler | ADR-0002 + doc de architecture | Un `201` no puede decir que hay password si aún no está; el EventBus de Nest no espera |
+| Firestore + emulador | ADR-0003 | Así guarda datos el reto en local |
+| Límite de 20 req/min en `/users` | ADR-0005 | La API no tiene login: es fácil abusarla |
+| Listado de a lo sumo 100 filas | OpenSpec del tope de listado | Evitar un `GET` muy pesado o abuso del listado |
+| Cloud Run + Pub/Sub “más adelante” | README + wiki | Plan a futuro; todavía no hay código |
 
 ---
 
-## 4. Plantilla para discutir
+## 3. Acuerdos que evitan dar vueltas
 
-En el PR o el chat:
-
-1. Problema — qué duele.
-2. Opciones — al menos dos (incluida “no hacer nada”).
-3. Criterio — corrección, fecha, facilidad de testear, coste.
-4. Elección — una frase.
-5. Consecuencia — qué deuda queda (`ponytail:` o ticket).
-
-Ejemplo real:
-
-> Problema: `publish` no espera a los handlers → el `201` puede mentir.  
-> Opciones: mutar en EventsHandler / await de un servicio / outbox + worker.  
-> Criterio: contrato HTTP + deadline.  
-> Elección: await ahora; Pub/Sub después.  
-> Consecuencia: el “evento” del PDF es aviso, no quien genera el password.
+1. **No inventes de más.** No partimos el módulo en microservicios; sí separamos capas (lo pide el reto y el equipo).
+2. **Si respondes `201`, el trabajo ya terminó.** El password (si faltaba) tiene que estar guardado; no “en camino”.
+3. **Firebase no se mete en el dominio.** Preferimos una interfaz imperfecta a un `import` de Firebase en application.
+4. **Lo que corre “después” tiene que tolerar repetirse.** Finalize y, más adelante, quien consuma Pub/Sub no deben romper si el mensaje llega dos veces.
+5. **Un OpenSpec = un tema.** No mezcles “listar usuarios” con “rediseñar el login” en el mismo change.
 
 ---
 
-## 5. OpenSpec sin misterio
+## 4. Cómo proponer un cambio
 
-Es el **guion antes de filmar**:
+Cuando lo comentes en el pull request o en el chat, conviene cubrir esto:
+
+1. **Problema** — qué está mal o qué falta.
+2. **Opciones** — al menos dos caminos (incluida “dejarlo como está”).
+3. **Criterios** — qué pesa más: que sea correcto, la fecha límite, qué tan fácil es probarlo y el costo de mantenerlo.
+4. **Elección** — en una frase, qué camino tomamos.
+5. **Pendientes** — si queda algo a propósito (comentario en código o un ticket).
+
+Ejemplo de lo que ya vivimos:
+
+> Problema: `publish` no espera a los handlers → el `201` puede decir que el password está listo cuando aún no.  
+> Opciones: escribir el password en el EventsHandler / hacer `await` de un servicio / outbox + worker.  
+> Criterios: contrato HTTP + fecha del reto.  
+> Elección: `await` ahora; Pub/Sub después.  
+> Pendiente: el “evento” del PDF es un aviso, no quien genera el password.
+
+---
+
+## 5. OpenSpec, en corto
+
+Sirve para acordar el cambio **antes** de implementarlo sin alcance claro:
 
 1. `propose` — qué cambia.
-2. `apply` — lo implementas.
+2. `apply` — lo implementas siguiendo la lista de tareas.
 3. `archive` — queda en el historial.
 
-No lo abras por un curl de ejemplo. Sí para “listado con tope de filas”.
+No lo abras solo para corregir un ejemplo de `curl`. Sí para algo como “listado con tope de filas”.
 
 ---
 
-## 6. Si tocas X, mira también Y
+## 6. Si cambias una cosa, revisa la otra
 
-| Cambias… | Revisa… |
-|----------|---------|
-| Capas / create | ADR-0002, wiki arquitectura, C4 |
+| Si cambias… | Revisa también… |
+|-------------|-----------------|
+| Capas o el create | ADR-0002, wiki de arquitectura, C4 |
 | Seguridad | ADR-0005, README, Swagger |
-| Colecciones | `docs/infra/base-de-datos.md` |
-| Nube | README GCP + [futuro-pubsub](./futuro-pubsub.md) |
-| Onboarding | [camino del desarrollador](./camino-del-desarrollador.md) |
+| Colecciones de Firestore | `docs/infra/base-de-datos.md` |
+| Plan en la nube | README (GCP) + [futuro-pubsub](./futuro-pubsub.md) |
+| Cómo entra alguien nuevo | [camino del desarrollador](./camino-del-desarrollador.md) |
 
 Siguiente: [futuro Pub/Sub](./futuro-pubsub.md).

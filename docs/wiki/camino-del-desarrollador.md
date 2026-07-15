@@ -154,7 +154,7 @@ Sin secretos en git. El reto se demo con emulador; no hace falta `terraform appl
 |-------|------------|
 | Entrar | Seguir la receta, pasar tests, respetar capas |
 | Mantener | Revisar PRs con ADR-0002, proponer OpenSpec |
-| Ser dueño | Enmendar ADRs, pensar Pub/Sub, cuidar `ponytail:` |
+| Responsable del módulo | Actualizar ADRs, plantear Pub/Sub, vigilar atajos documentados |
 
 ---
 
