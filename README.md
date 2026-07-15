@@ -1,31 +1,92 @@
 # Reto GeeksCastle — Users API
 
-API NestJS (hexagonal + CQRS) + Firebase Firestore en **Nx lite**, con IaC **Terraform lite**. Password autogenerado vía evento al crear usuario si no se envía.
+API **NestJS** (hexagonal + **CQRS**) + **Firebase Firestore**, orquestada con **Nx lite**, IaC **Terraform lite**.  
+Al crear un usuario sin `password`, un evento de dominio genera uno seguro, lo hashea (bcrypt) y actualiza el documento.
 
 **Deadline de entrega:** antes del **2026-07-16 12:00 CDMX**.
 
-## Documentación (empezar aquí)
+## Stack
 
-| Documento | Contenido |
-|-----------|-----------|
-| [docs/requirements/reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 (listas para GitHub) |
-| [docs/adr/](./docs/adr/) | ADRs (Nest/CQRS/Firebase/CI/seguridad/Nx/Terraform) |
-| [docs/README.md](./docs/README.md) | Índice de docs |
-| [reto.md](./reto.md) | Enunciado original del reto |
-| OpenSpec change | `openspec/changes/bootstrap-users-api/` |
+| Pieza | Detalle |
+|-------|---------|
+| App | `apps/api` (NestJS 11, TypeScript strict) |
+| Workspace | Nx lite (`nx serve/build/test api`) |
+| Persistencia | Firestore via `firebase-admin` + emulator |
+| Tests | Jest ≥ 80 % statements |
+| CI | GitHub Actions — build + `test:cov` |
+| IaC | `infra/` Terraform (validate/plan; apply opcional) |
 
-## Estado actual
+## Prerrequisitos
 
-- Requisitos, ADRs (0001–0007) y OpenSpec **listos para implementar**.
-- Código Nest / CI / infra: pendiente (`/opsx:apply` o pedir implementación).
+- Node.js 20+
+- npm
+- Firebase CLI (`npm i -g firebase-tools`) para emulator
+- Terraform (opcional, solo `infra/`)
 
-## Prioridad bajo deadline
+## Setup rápido
 
-1. **P0** — Users + evento password + Firebase emulator + Jest ≥ 80 % + CI  
-2. **P1** — Nx lite + Terraform lite (ya especificados; no deben tumbar el P0)
+```bash
+cp .env.example .env
+npm install                          # Nx (raíz)
+cd apps/api && npm install && cd ../..
+```
 
-## Próximos pasos
+### Emulator + API
 
-1. Inicializar git + remote GitHub (si aún no existe).
-2. Crear Issues/Project desde las US del doc de requisitos.
-3. Implementar: en Cursor, `/opsx:apply bootstrap-users-api`.
+```bash
+# terminal 1
+firebase emulators:start --only firestore
+
+# terminal 2
+npm run api:serve
+# o: cd apps/api && npm run start:dev
+```
+
+Health: `GET http://localhost:3000/api/v1/health`
+
+### Crear usuario
+
+```bash
+# sin password → evento genera uno seguro (hash en Firestore)
+curl -s -X POST http://localhost:3000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"jane","email":"jane@example.com"}'
+
+# con password
+curl -s -X POST http://localhost:3000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"john","email":"john@example.com","password":"secret123"}'
+
+# leer (nunca expone password/hash)
+curl -s http://localhost:3000/api/v1/users/<id>
+```
+
+## Tests
+
+```bash
+npm run test:cov
+# o: cd apps/api && npm run test:cov
+```
+
+Umbral: `coverageThreshold.global.statements: 80`.
+
+## CI
+
+`.github/workflows/ci.yml` — Node 20: `npm ci` → `build` → `test:cov` en `apps/api`.
+
+## Terraform lite
+
+Ver [`infra/README.md`](./infra/README.md). El challenge se demuestra con **emulator**, no con `terraform apply`.
+
+## Documentación
+
+| Doc | Contenido |
+|-----|-----------|
+| [docs/requirements/reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 |
+| [docs/adr/](./docs/adr/) | ADRs 0001–0007 |
+| [openspec/changes/bootstrap-users-api/](./openspec/changes/bootstrap-users-api/) | Proposal / design / specs / tasks |
+| [reto.md](./reto.md) | Enunciado original |
+
+## Project board
+
+[GitHub Project — Reto Geekscastle Backend](https://github.com/users/AndresED/projects/7/views/1)

@@ -1,0 +1,20 @@
+{
+  "name": "reto-geekscastle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Users API — NestJS hexagonal + CQRS + Firebase (Nx lite)",
+  "scripts": {
+    "nx": "nx",
+    "api:serve": "nx serve api",
+    "api:build": "nx build api",
+    "api:test": "nx test api",
+    "api:test:cov": "nx test api --configuration=coverage",
+    "build": "nx build api",
+    "test": "nx test api",
+    "test:cov": "nx test api --configuration=coverage",
+    "start:dev": "nx serve api"
+  },
+  "devDependencies": {
+    "nx": "^21.2.0"
+  }
+}
