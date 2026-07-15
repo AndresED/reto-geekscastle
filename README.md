@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/AndresED/reto-geekscastle/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresED/reto-geekscastle/actions/workflows/ci.yml)
 
-API **NestJS** (hexagonal + **CQRS**) + **Firebase Firestore**, orquestada con **Nx lite**, IaC **Terraform lite**.  
-Al crear un usuario sin `password`, `FinalizeMissingPasswordService` genera uno seguro, lo hashea (bcrypt) y actualiza el documento **en el request path** (await). Luego se publica `UserCreatedEvent` como señal de dominio/audit — Nest `EventBus` no espera handlers (ADR-0002), así que la generación **no** vive en el `@EventsHandler`.
+API **NestJS** (hexagonal + **CQRS**) con **Firebase Firestore**, orquestada con **Nx lite** e IaC **Terraform lite**.
+
+Si el create llega **sin** `password`, el sistema genera uno seguro, lo hashea con **bcrypt** y lo guarda **antes** de responder `201` (`FinalizeMissingPasswordService`, en el path del request). Después publica `UserCreatedEvent` solo como aviso de dominio/auditoría: el `EventBus` de Nest **no espera** a los `@EventsHandler`, así que la generación **no** ocurre ahí ([ADR-0002](./docs/adr/0002-backend-hexagonal-cqrs.md)).
 
 **Deadline de entrega:** antes del **2026-07-16 12:00 CDMX**.
 
@@ -14,7 +15,7 @@ Al crear un usuario sin `password`, `FinalizeMissingPasswordService` genera uno 
 | App | `apps/api` (NestJS 11, TypeScript strict) |
 | Workspace | Nx lite (`nx serve/build/test api`) |
 | Persistencia | Firestore via `firebase-admin` + emulator |
-| Seguridad | Helmet + throttle `POST /users` 20/min |
+| Seguridad | Helmet + throttle API **20 req/min** por IP (`/health` exento) |
 | OpenAPI | Swagger UI en `/api/docs` (+ `/api/docs-json`) |
 | Tests | Jest ≥ 80 % statements + smoke create→password |
 | CI | GitHub Actions — API build/`test:cov` + Terraform validate |
@@ -37,7 +38,7 @@ El módulo `users` está armado con **arquitectura hexagonal** (Clean Architectu
 2. Se espera a `FinalizeMissingPasswordService`: genera el password, lo hashea con bcrypt y actualiza el documento.
 3. Se publica `UserCreatedEvent` solo como aviso de auditoría (`UserCreatedAuditHandler` escribe un log). El `EventBus` de Nest **no espera** a los handlers, así que ahí **no** se vuelve a mutar el password.
 
-Más detalle: [`docs/adr/0002`](./docs/adr/0002-backend-hexagonal-cqrs.md) y [`docs/infra/`](./docs/infra/).
+Más detalle: [**wiki** (analogías + onboarding)](./docs/wiki/README.md), [`docs/adr/0002`](./docs/adr/0002-backend-hexagonal-cqrs.md), [finalize await vs `@EventsHandler`](./docs/architecture/finalize-await-vs-events-handler.md), [`docs/infra/`](./docs/infra/).
 
 ## Prerrequisitos
 
@@ -84,11 +85,11 @@ curl -s -X POST http://localhost:3000/api/v1/users \
 # leer (nunca expone password/hash)
 curl -s http://localhost:3000/api/v1/users/<id>
 
-# listar todos
+# listar (máx. 100 filas; array vacío = []; orden por createdAt)
 curl -s http://localhost:3000/api/v1/users
 ```
 
-`POST /api/v1/users` está limitado a **20 req/min** (HTTP 429 si se supera).
+Las rutas de **users** (`POST` / `GET` list / `GET` by id) comparten un rate limit de **20 req/min por IP** (HTTP 429 si se supera). `GET /api/v1/health` está exento.
 
 Si falla la generación/persistencia del password tras el insert, el create no responde 201 y se intenta borrar el documento (best-effort; un crash a mitad podría dejar un huérfano residual).
 
@@ -112,7 +113,7 @@ curl -s -X POST http://localhost:3000/api/v1/users \
 # 404 — usuario inexistente
 curl -s http://localhost:3000/api/v1/users/00000000-0000-0000-0000-000000000000
 
-# 429 — superar 20 POST /users en 1 min (repetir create rápido)
+# 429 — superar 20 req/min en rutas /users (POST o GET)
 ```
 
 Cuerpos de error: validación → `{ statusCode, message[] }`; dominio → `{ statusCode, code, message }` (`NOT_FOUND`, `CONFLICT`, etc.).
@@ -230,7 +231,7 @@ Hoy el `UserCreatedAuditHandler` es el prototipo en proceso. El mensaje de Pub/S
 
 - La imagen no lleva `.env` ni archivos de cuenta de servicio.
 - La cuenta de Cloud Run solo con los roles que necesita.
-- El rate limit de `POST /users` (20/min) se queda en la app; si crece el tráfico, se suma algo en el borde (p. ej. Cloud Armor).
+- El rate limit de las rutas `/users` (20/min por IP) se queda en la app; si crece el tráfico, se suma algo en el borde (p. ej. Cloud Armor). `/health` no cuenta para ese cupo.
 - Login de clientes no entra en este MVP (ver ADR-0005). En prod típico iría JWT / Identity Platform delante de Cloud Run.
 - Las reglas de Firestore para clientes **no** reemplazan al Admin SDK: en este diseño escribe el backend.
 
@@ -240,6 +241,7 @@ Hoy el `UserCreatedAuditHandler` es el prototipo en proceso. El mensaje de Pub/S
 |-----|-----------|
 | [docs/requirements/reto.md](./docs/requirements/reto.md) | Historias US-01…US-22 |
 | [docs/adr/](./docs/adr/) | ADRs 0001–0007 |
+| [docs/architecture/finalize-await-vs-events-handler.md](./docs/architecture/finalize-await-vs-events-handler.md) | Por qué finalize await ≠ `@EventsHandler` |
 | [openspec/specs/](./openspec/specs/) | Specs vivas (OpenSpec) |
 | [openspec/changes/archive/](./openspec/changes/archive/) | Changes archivados |
 | [docs/reviews/latest.md](./docs/reviews/latest.md) | Último code review |

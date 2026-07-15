@@ -1,7 +1,7 @@
 # users Specification
 
 ## Purpose
-Users bounded context: create/get user via CQRS, Firestore persistence, secure password generation/hashing on create when password is omitted.
+Users bounded context: create/list/get user via CQRS, Firestore persistence, secure password generation/hashing on create when password is omitted.
 ## Requirements
 ### Requirement: User entity fields
 The system MUST model a User with auto-generated `id`, `username`, `email`, and optional password at creation time.
@@ -83,6 +83,32 @@ The system MUST expose `GET /api/v1/users/:id` implemented as a Query + Handler 
 #### Scenario: Missing user
 - **WHEN** a client requests an unknown user id
 - **THEN** the system responds with HTTP 404
+
+### Requirement: List users query
+The system MUST expose `GET /api/v1/users` implemented as a Query + Handler in separate files. The response MUST be HTTP 200 with a JSON array of public user fields (same projection as get-by-id) and MUST NOT include plaintext password or password hash. When no users exist, the system MUST return an empty array (not HTTP 404).
+
+#### Scenario: List returns public users
+- **WHEN** a client calls `GET /api/v1/users` and at least one user exists
+- **THEN** the system responds with HTTP 200 and an array of public user objects without secrets
+
+#### Scenario: Empty list when none exist
+- **WHEN** a client calls `GET /api/v1/users` and the store has no users
+- **THEN** the system responds with HTTP 200 and `[]`
+
+#### Scenario: List does not expose secrets
+- **WHEN** a listed user has a stored password hash
+- **THEN** the list response MUST NOT include `password` or `passwordHash` fields
+
+### Requirement: List users response size is capped
+The system MUST NOT return an unbounded dump of all users on `GET /api/v1/users`. The list path MUST apply a documented maximum page size (hard server cap). When more users exist than the cap, the response MUST contain at most that many public user objects (HTTP 200). The cap MUST be enforced in persistence (or equivalently before response mapping) so the application does not load an arbitrarily large collection into memory as the primary strategy.
+
+#### Scenario: List respects maximum page size
+- **WHEN** more users exist than the configured list maximum
+- **THEN** `GET /api/v1/users` responds with HTTP 200 and at most that maximum number of public user objects
+
+#### Scenario: List under the cap returns all
+- **WHEN** fewer users exist than the configured list maximum
+- **THEN** `GET /api/v1/users` responds with HTTP 200 and every public user (same secret-free projection as before)
 
 ### Requirement: Thin HTTP controllers
 HTTP controllers MUST validate input and dispatch commands/queries only; they MUST NOT contain password generation or Firestore access logic.

@@ -16,7 +16,7 @@ describe('FinalizeMissingPasswordService', () => {
       updatePassword: jest.fn(),
       findById: jest.fn(),
       findByEmail: jest.fn(),
-      listAll: jest.fn(),
+      list: jest.fn(),
       delete: jest.fn(),
     };
     generator = { generate: jest.fn() };

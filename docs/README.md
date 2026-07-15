@@ -14,8 +14,10 @@
 
 ### Desarrollador
 
+- **Wiki (onboarding + arquitectura con analogías):** [`docs/wiki/`](./wiki/README.md) — empieza por [camino del desarrollador](./wiki/camino-del-desarrollador.md)
 - Historias detalladas (copiar a GitHub Issues): [`requirements/reto.md`](./requirements/reto.md)
 - ADRs antes de implementar features transversales
+- **Finalize await ≠ `@EventsHandler`:** [`architecture/finalize-await-vs-events-handler.md`](./architecture/finalize-await-vs-events-handler.md)
 - Infra de producto: [`docs/infra/`](./infra/README.md)
 - OpenSpec: carpeta `openspec/`
 
@@ -40,8 +42,10 @@
 ```
 docs/
 ├── README.md              ← estás acá
+├── wiki/                  ← guía narrativa (hexagonal, CQRS, onboarding, Pub/Sub)
 ├── requirements/reto.md   ← historias US + mapa
 ├── adr/                   ← ADR-0001 … 0007
+├── architecture/          ← diseño profundo (finalize vs EventsHandler)
 ├── infra/                 ← Firestore model + C4 (este reto)
 └── reviews/               ← code reviews
 ```

@@ -43,10 +43,10 @@ export class InMemoryUserRepository implements UserRepositoryPort {
     return this.store.get(userId) ?? null;
   }
 
-  async listAll(): Promise<User[]> {
-    return [...this.store.values()].sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-    );
+  async list(limit: number): Promise<User[]> {
+    return [...this.store.values()]
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(0, Math.max(0, limit));
   }
 
   async delete(id: string): Promise<void> {

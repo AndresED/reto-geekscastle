@@ -21,7 +21,7 @@ import {
   ApiTags,
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
-import { SkipThrottle } from '@nestjs/throttler';
+import { USERS_LIST_MAX } from '../../../../shared/config/users-list.constants';
 import { CreateUserCommand } from '../../application/commands/create-user.command';
 import { CreateUserResult } from '../../application/commands/create-user.result';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id.query';
@@ -43,7 +43,7 @@ export class UsersController {
     private readonly queryBus: QueryBus,
   ) {}
 
-  /** Rate limit comes from ThrottlerModule (20/min in AppModule). */
+  /** Rate limit: global ThrottlerModule (20/min per IP; health is skipped). */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -68,7 +68,7 @@ export class UsersController {
     type: DomainApiErrorDto,
   })
   @ApiTooManyRequestsResponse({
-    description: 'Write rate limit exceeded (20 req/min)',
+    description: 'Rate limit exceeded (20 req/min per IP across users routes)',
     type: ThrottleApiErrorDto,
   })
   @ApiBadGatewayResponse({
@@ -88,16 +88,22 @@ export class UsersController {
   }
 
   @Get()
-  @SkipThrottle()
   @ApiOperation({
     summary: 'List users',
-    description:
-      'Returns all users (public fields only, ordered by createdAt ascending). Empty list when none exist.',
+    description: [
+      'Returns public user fields ordered by createdAt ascending.',
+      `Hard server cap of ${USERS_LIST_MAX} rows (MVP — no cursor pagination).`,
+      'Empty list when none exist.',
+    ].join(' '),
   })
   @ApiOkResponse({
     description: 'Users found (may be empty)',
     type: UserResponseDto,
     isArray: true,
+  })
+  @ApiTooManyRequestsResponse({
+    description: 'Rate limit exceeded (20 req/min per IP)',
+    type: ThrottleApiErrorDto,
   })
   @ApiBadGatewayResponse({
     description: 'Firestore persistence failure (`code: PERSISTENCE_ERROR`)',
@@ -115,7 +121,6 @@ export class UsersController {
   }
 
   @Get(':id')
-  @SkipThrottle()
   @ApiOperation({
     summary: 'Get user by id',
     description:
@@ -133,6 +138,10 @@ export class UsersController {
   @ApiNotFoundResponse({
     description: 'User does not exist (`code: NOT_FOUND`)',
     type: DomainApiErrorDto,
+  })
+  @ApiTooManyRequestsResponse({
+    description: 'Rate limit exceeded (20 req/min per IP)',
+    type: ThrottleApiErrorDto,
   })
   @ApiInternalServerErrorResponse({
     description: 'Unexpected error (`code: INTERNAL_ERROR`)',

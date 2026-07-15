@@ -50,7 +50,7 @@ export class ValidationApiErrorDto {
   error?: string;
 }
 
-/** `@nestjs/throttler` when `POST /users` exceeds 20 req/min. */
+/** `@nestjs/throttler` when users routes exceed 20 req/min per IP. */
 export class ThrottleApiErrorDto {
   @ApiProperty({ example: 429 })
   statusCode!: number;

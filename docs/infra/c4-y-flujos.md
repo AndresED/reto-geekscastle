@@ -8,7 +8,7 @@ flowchart LR
   api[Users API NestJS]
   fs[Firestore Emulator o GCP]
 
-  client -->|POST/GET /api/v1/users| api
+  client -->|POST /users · GET /users · GET /users/:id| api
   api -->|Admin SDK users + emails| fs
 ```
 
@@ -36,8 +36,8 @@ No hay frontend web ni Postgres en el alcance del challenge. Terraform no config
 
 | Capa | Piezas |
 |------|--------|
-| HTTP | `UsersController`, DTO, throttle/SkipThrottle |
-| Application | `CreateUserHandler`, `GetUserByIdHandler`, `FinalizeMissingPasswordService`, `UserCreatedAuditHandler` |
+| HTTP | `UsersController`, DTO, throttle global (health `@SkipThrottle`) |
+| Application | `CreateUserHandler`, `ListUsersHandler`, `GetUserByIdHandler`, `FinalizeMissingPasswordService`, `UserCreatedAuditHandler` |
 | Domain | `User`, ports, `UserCreatedEvent`, errors |
 | Infrastructure | Firestore repo, bcrypt hasher, crypto password generator, Firebase provider |
 

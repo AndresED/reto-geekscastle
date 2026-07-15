@@ -46,6 +46,7 @@
 | **US-13** | Hashear password (nunca plaintext en DB) | `users` | Usuarios |
 | **US-14** | Errores de validación / persistencia / dominio | `users` | Usuarios |
 | **US-15** | Query leer usuario por id (sin password) | `users` | Usuarios |
+| *(extra)* | `GET /users` listar (sin secretos; vacío = `[]`) | `users` | Usuarios |
 | **US-16** | Tests Jest ≥ 80 % + casos clave password/evento | `testing` | Calidad |
 | **US-17** | Firebase Emulator en desarrollo local | `delivery` | Entrega |
 | **US-18** | README: setup, run, tests, curl | `delivery` | Entrega |
@@ -366,6 +367,8 @@ Content-Type: application/json
 
 **Estimación sugerida:** S  
 **Depends on:** US-07, US-03
+
+> **Extra (no US formal):** también existe `GET /api/v1/users` (listar). Devuelve `200` + array público; si no hay usuarios, `[]` (no 404). Ver OpenSpec `users` → List users query.
 
 ---
 

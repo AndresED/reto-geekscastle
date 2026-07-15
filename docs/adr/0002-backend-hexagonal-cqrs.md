@@ -6,6 +6,8 @@ Aceptado
 
 ## Enmienda (2026-07-15 — await password on create)
 
+Guía extendida con antipatrones y timeline: [`../architecture/finalize-await-vs-events-handler.md`](../architecture/finalize-await-vs-events-handler.md).
+
 Nest `EventBus.publish` **no espera** a los `@EventsHandler`. Para cumplir el contrato HTTP:
 
 1. `CreateUserHandler` **await** `FinalizeMissingPasswordService.execute(userId)` en el request path cuando falta password (único ejecutor mutante).

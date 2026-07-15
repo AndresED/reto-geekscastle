@@ -147,12 +147,15 @@ export class FirestoreUserRepository implements UserRepositoryPort {
     }
   }
 
-  async listAll(): Promise<User[]> {
+  async list(limit: number): Promise<User[]> {
     try {
-      const snap = await this.db.collection(this.usersCollection).get();
-      return snap.docs
-        .map((doc) => this.toUser(doc.id, doc.data() as UserDoc))
-        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      const capped = Math.max(0, Math.min(limit, Number.MAX_SAFE_INTEGER));
+      const snap = await this.db
+        .collection(this.usersCollection)
+        .orderBy('createdAt', 'asc')
+        .limit(capped)
+        .get();
+      return snap.docs.map((doc) => this.toUser(doc.id, doc.data() as UserDoc));
     } catch (error) {
       throw new UserPersistenceError(
         `Failed to list users: ${error instanceof Error ? error.message : String(error)}`,

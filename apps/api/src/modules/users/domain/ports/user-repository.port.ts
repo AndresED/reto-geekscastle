@@ -11,6 +11,7 @@ export interface UserRepositoryPort {
   ): Promise<User>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  listAll(): Promise<User[]>;
+  /** Returns at most `limit` users (caller supplies the server cap). */
+  list(limit: number): Promise<User[]>;
   delete(id: string): Promise<void>;
 }

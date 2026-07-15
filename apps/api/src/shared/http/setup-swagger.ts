@@ -12,7 +12,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
         '',
         '**Security notes:**',
         '- Responses never include `password` or `passwordHash`.',
-        '- `POST /api/v1/users` is rate-limited to **20 requests / minute**.',
+        '- Users routes (`POST` / `GET` list / `GET` by id) share **20 requests / minute** per IP; `/health` is exempt.',
         '- Email uniqueness is enforced (HTTP **409** on conflict).',
       ].join('\n'),
     )

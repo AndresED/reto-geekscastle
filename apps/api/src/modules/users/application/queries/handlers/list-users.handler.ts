@@ -1,5 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { USERS_LIST_MAX } from '../../../../../shared/config/users-list.constants';
 import { User } from '../../../domain/entities/user.entity';
 import {
   USER_REPOSITORY_PORT,
@@ -15,6 +16,6 @@ export class ListUsersHandler implements IQueryHandler<ListUsersQuery, User[]> {
   ) {}
 
   async execute(_query: ListUsersQuery): Promise<User[]> {
-    return this.users.listAll();
+    return this.users.list(USERS_LIST_MAX);
   }
 }

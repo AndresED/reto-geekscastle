@@ -20,10 +20,10 @@ import {
 import { USER_REPOSITORY_PORT } from '../../domain/ports/user-repository.port';
 import { InMemoryUserRepository } from '../../test-doubles/in-memory-user.repository';
 import { HealthController } from '../../../../shared/health/health.controller';
-import { USERS_WRITE_THROTTLE } from '../../../../shared/config/throttle.constants';
+import { API_THROTTLE } from '../../../../shared/config/throttle.constants';
 import { UsersController } from './users.controller';
 
-describe('Users create throttle (HTTP)', () => {
+describe('Users API throttle (HTTP)', () => {
   let app: App;
   let moduleRef: TestingModule;
 
@@ -34,8 +34,8 @@ describe('Users create throttle (HTTP)', () => {
         // Faster assertion than production limit; values for ttl/name stay aligned.
         ThrottlerModule.forRoot([
           {
-            name: USERS_WRITE_THROTTLE.name,
-            ttl: USERS_WRITE_THROTTLE.ttl,
+            name: API_THROTTLE.name,
+            ttl: API_THROTTLE.ttl,
             limit: 2,
           },
         ]),
@@ -84,11 +84,11 @@ describe('Users create throttle (HTTP)', () => {
   });
 
   it('should export production throttle limit constant', () => {
-    expect(USERS_WRITE_THROTTLE.limit).toBe(20);
-    expect(USERS_WRITE_THROTTLE.ttl).toBe(60_000);
+    expect(API_THROTTLE.limit).toBe(20);
+    expect(API_THROTTLE.ttl).toBe(60_000);
   });
 
-  it('should return 429 after create limit and keep health available', async () => {
+  it('should return 429 on excess create and keep health available', async () => {
     const first = await request(app)
       .post('/api/v1/users')
       .send({ username: 'u1', email: 'u1@example.com', password: 'secret123' });
@@ -103,6 +103,22 @@ describe('Users create throttle (HTTP)', () => {
       .post('/api/v1/users')
       .send({ username: 'u3', email: 'u3@example.com', password: 'secret123' });
     expect(blocked.status).toBe(429);
+
+    const health = await request(app).get('/api/v1/health');
+    expect(health.status).toBe(200);
+  });
+
+  it('should also throttle GET /users after the shared limit is exhausted', async () => {
+    // Shared in-memory tracker may already be near limit from prior test.
+    // Blow remaining budget with GETs until blocked, then prove health still works.
+    let lastStatus = 200;
+    for (let i = 0; i < 5; i++) {
+      lastStatus = (await request(app).get('/api/v1/users')).status;
+      if (lastStatus === 429) {
+        break;
+      }
+    }
+    expect(lastStatus).toBe(429);
 
     const health = await request(app).get('/api/v1/health');
     expect(health.status).toBe(200);

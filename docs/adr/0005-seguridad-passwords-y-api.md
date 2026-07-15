@@ -6,7 +6,7 @@ Aceptado
 
 ## Enmienda (2026-07-15 — baseline aplicada)
 
-- `@nestjs/throttler`: `POST /api/v1/users` **20 req/min**; `GET /users/:id` y `/health` con `@SkipThrottle()`.
+- `@nestjs/throttler`: **20 req/min por IP** en rutas de users (`POST` + `GET`); solo `/health` con `@SkipThrottle()`.
 - `helmet()` en `main.ts`.
 - Generador de password usa rejection sampling (sin bias de modulo).
 
@@ -43,7 +43,7 @@ La API del reto es demo sin auth de clientes; aun así se aplican controles razo
 | Validación | `ValidationPipe` `whitelist` + `forbidNonWhitelisted` + `transform` |
 | Email | Formato válido; normalización trim/lowercase en frontera |
 | Password cliente (si envía) | Longitud mínima **8**; máximo razonable (ej. 128) para evitar DoS de bcrypt |
-| Rate limit | `@nestjs/throttler` en `POST /users` **20/min** (implementado) |
+| Rate limit | `@nestjs/throttler` **20/min por IP** en rutas `/users` (health exento) |
 | AuthN/AuthZ API | **No** en v1 |
 | Helmet | **Implementado** en `main.ts` |
 | Secretos | Solo env / secret manager; nunca repo |
@@ -94,4 +94,4 @@ Cumple reto + higiene básica.
 - [x] Firestore sin plaintext.
 - [x] `.env*` con secretos reales no versionados.
 - [x] Filter HTTP sin stack traces en respuesta.
-- [x] Throttle en `POST /users` + Helmet en bootstrap.
+- [x] Throttle en rutas `/users` (POST + GET) + Helmet en bootstrap; `/health` exento.

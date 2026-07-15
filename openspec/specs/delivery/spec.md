@@ -49,16 +49,20 @@ The repository MUST include a `infra/` Terraform configuration that is formattab
 - **WHEN** an evaluator reads `infra/` documentation
 - **THEN** they can run or understand `terraform validate` and still use the emulator as the challenge runtime path
 
-### Requirement: Rate limit on user creation
-The API MUST rate-limit `POST /api/v1/users` to reduce abuse. Excess requests MUST receive HTTP 429. The health endpoint MUST NOT be subject to the same write rate limit.
+### Requirement: Rate limit on users API
+The API MUST rate-limit `POST /api/v1/users`, `GET /api/v1/users`, and `GET /api/v1/users/:id` (shared per-IP budget) to reduce abuse. Excess requests MUST receive HTTP 429. The health endpoint MUST NOT be subject to the same rate limit.
 
 #### Scenario: Create is rate limited
-- **WHEN** a client exceeds the configured create rate limit within the time window
+- **WHEN** a client exceeds the configured rate limit within the time window via users routes
 - **THEN** the system responds with HTTP 429
 
+#### Scenario: List or get share the same rate limit
+- **WHEN** a client exhausts the rate limit using create and/or list/get calls
+- **THEN** subsequent `GET /api/v1/users` (or get-by-id) requests within the window also receive HTTP 429
+
 #### Scenario: Health remains available under throttle policy
-- **WHEN** a client calls `GET /api/v1/health`
-- **THEN** the request is not rejected solely by the create-endpoint write throttle
+- **WHEN** a client calls `GET /api/v1/health` after users routes have been rate-limited
+- **THEN** the request is not rejected solely by the users API throttle
 
 ### Requirement: HTTP security headers
 The NestJS application MUST enable Helmet (or equivalent security headers middleware) at bootstrap.

@@ -173,7 +173,7 @@ describe('FirestoreUserRepository', () => {
     await expect(repo.findByEmail('missing@example.com')).resolves.toBeNull();
   });
 
-  it('should list all users from users collection', async () => {
+  it('should list users with orderBy and limit', async () => {
     const usersGet = jest.fn().mockResolvedValue({
       docs: [
         {
@@ -189,15 +189,29 @@ describe('FirestoreUserRepository', () => {
         },
       ],
     });
+    const query: {
+      orderBy: jest.Mock;
+      limit: jest.Mock;
+      get: jest.Mock;
+    } = {
+      orderBy: jest.fn(),
+      limit: jest.fn(),
+      get: usersGet,
+    };
+    query.orderBy.mockReturnValue(query);
+    query.limit.mockReturnValue(query);
+
     collection.mockImplementation((name: string) => {
       if (name === 'emails') {
         return { doc: () => emailDoc };
       }
-      return { doc: () => userDoc, get: usersGet };
+      return { doc: () => userDoc, ...query };
     });
 
-    const list = await repo.listAll();
+    const list = await repo.list(100);
 
+    expect(query.orderBy).toHaveBeenCalledWith('createdAt', 'asc');
+    expect(query.limit).toHaveBeenCalledWith(100);
     expect(usersGet).toHaveBeenCalled();
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('id-1');
