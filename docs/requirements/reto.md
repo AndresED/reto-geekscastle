@@ -78,11 +78,11 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] Proyecto NestJS ejecutable (`npm run start:dev` o equivalente).
-- [ ] `tsconfig` con `strict: true` (o flags equivalentes del template Nest actual).
-- [ ] Prefijo global de API documentado (ej. `/api/v1`).
-- [ ] Endpoint `GET /health` (o `/api/v1/health`) responde `200`.
-- [ ] `.env.example` sin secretos reales; `.env` en `.gitignore`.
+- [x] Proyecto NestJS ejecutable (`npm run start:dev` o equivalente).
+- [x] `tsconfig` con `strict: true` (o flags equivalentes del template Nest actual).
+- [x] Prefijo global de API documentado (ej. `/api/v1`).
+- [x] Endpoint `GET /health` (o `/api/v1/health`) responde `200`.
+- [x] `.env.example` sin secretos reales; `.env` en `.gitignore`.
 
 **Notas técnicas:** ver ADR-0001 (bootstrap / estructura repo).  
 **Estimación sugerida:** S
@@ -97,10 +97,10 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] Capas presentes y dependencia hacia adentro (domain sin Nest/Firebase).
-- [ ] Controllers delgados: validan DTO y despachan command/query.
-- [ ] Infraestructura implementa ports; no hay lógica de negocio en repository.
-- [ ] Estructura documentada en ADR-0002 y en README o guía.
+- [x] Capas presentes y dependencia hacia adentro (domain sin Nest/Firebase).
+- [x] Controllers delgados: validan DTO y despachan command/query.
+- [x] Infraestructura implementa ports; no hay lógica de negocio en repository.
+- [x] Estructura documentada en ADR-0002 y en README o guía.
 
 **Estimación sugerida:** M
 
@@ -114,11 +114,11 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] `CreateUserCommand` en archivo propio.
-- [ ] `CreateUserHandler` en archivo propio.
-- [ ] Si existe lectura: `GetUserByIdQuery` + `GetUserByIdHandler` en archivos propios.
-- [ ] Handlers registrados vía `@nestjs/cqrs` (`CqrsModule` / providers del módulo).
-- [ ] Un handler orquesta; no contiene acceso directo a Admin SDK (usa ports).
+- [x] `CreateUserCommand` en archivo propio.
+- [x] `CreateUserHandler` en archivo propio.
+- [x] Si existe lectura: `GetUserByIdQuery` + `GetUserByIdHandler` en archivos propios.
+- [x] Handlers registrados vía `@nestjs/cqrs` (`CqrsModule` / providers del módulo).
+- [x] Un handler orquesta; no contiene acceso directo a Admin SDK (usa ports).
 
 **Estimación sugerida:** S  
 **Depends on:** US-02
@@ -133,9 +133,9 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] `ConfigModule` (o equivalente) + schema de env validado.
-- [ ] Variables documentadas: al menos `PORT`, flags/credenciales Firebase o `FIREBASE_AUTH_EMULATOR_HOST` / project id según ADR-0003.
-- [ ] Sin `process.env` disperso en domain/application.
+- [x] `ConfigModule` (o equivalente) + schema de env validado.
+- [x] Variables documentadas: al menos `PORT`, flags/credenciales Firebase o `FIREBASE_AUTH_EMULATOR_HOST` / project id según ADR-0003.
+- [x] Sin `process.env` disperso en domain/application.
 
 **Estimación sugerida:** S
 
@@ -151,10 +151,10 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] Campos del reto: `id` (generado), `username`, `email`, `password` opcional al crear.
-- [ ] `id` no lo inventa el cliente (o se ignora si viene).
-- [ ] Invariantes mínimas: username/email no vacíos; email con formato válido en frontera HTTP y/o dominio.
-- [ ] El dominio no expone detalle de Firestore.
+- [x] Campos del reto: `id` (generado), `username`, `email`, `password` opcional al crear.
+- [x] `id` no lo inventa el cliente (o se ignora si viene).
+- [x] Invariantes mínimas: username/email no vacíos; email con formato válido en frontera HTTP y/o dominio.
+- [x] El dominio no expone detalle de Firestore.
 
 **Estimación sugerida:** S
 
@@ -168,9 +168,9 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] Métodos mínimos: `create`, `update`, `findById` (nombres alineados al código).
-- [ ] Token de DI documentado (ej. `USER_REPOSITORY_PORT`).
-- [ ] Application/handlers solo dependen del port.
+- [x] Métodos mínimos: `create`, `updatePassword`, `findById` (más `findByEmail`, `list`, `delete` según evolución).
+- [x] Token de DI documentado (ej. `USER_REPOSITORY_PORT`).
+- [x] Application/handlers solo dependen del port.
 
 **Estimación sugerida:** S  
 **Depends on:** US-05
@@ -185,11 +185,11 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] Usa Firebase Admin SDK (no SDK de cliente en Nest).
-- [ ] Colección documentada (ej. `users`).
-- [ ] Mapeo documento ↔ dominio explícito.
-- [ ] Funciona contra **Firebase Emulator** en local (ADR-0003).
-- [ ] Errores de persistencia se traducen a error de dominio/aplicación tipado.
+- [x] Usa Firebase Admin SDK (no SDK de cliente en Nest).
+- [x] Colección documentada (ej. `users`).
+- [x] Mapeo documento ↔ dominio explícito.
+- [x] Funciona contra **Firebase Emulator** en local (ADR-0003).
+- [x] Errores de persistencia se traducen a error de dominio/aplicación tipado.
 
 **Estimación sugerida:** M  
 **Depends on:** US-06, US-04
@@ -204,10 +204,10 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] Port(s) p.ej. `PasswordGeneratorPort`, `PasswordHasherPort` (o uno compuesto si se justifica en ADR).
-- [ ] Generación usa fuente criptográficamente segura (stdio `crypto` o lib acordada).
-- [ ] Hashing con **bcrypt** (o equivalente documentado); **nunca** guardar plaintext.
-- [ ] Longitud/complejidad mínima del password generado definida en ADR-0005.
+- [x] Port(s) p.ej. `PasswordGeneratorPort`, `PasswordHasherPort` (o uno compuesto si se justifica en ADR).
+- [x] Generación usa fuente criptográficamente segura (stdio `crypto` o lib acordada).
+- [x] Hashing con **bcrypt** (o equivalente documentado); **nunca** guardar plaintext.
+- [x] Longitud/complejidad mínima del password generado definida en ADR-0005.
 
 **Estimación sugerida:** S
 
@@ -223,11 +223,11 @@ Convención de estados en Project (recomendado):
 
 **Criterios de aceptación**
 
-- [ ] DTO validado (`class-validator` o Zod según ADR) con `whitelist` + `forbidNonWhitelisted`.
-- [ ] Controller dispara `CreateUserCommand` (no llama Firestore directo).
-- [ ] Respuesta éxito `201 Created` con usuario creado.
-- [ ] La respuesta **no** incluye password en plaintext (ni hash, salvo decisión explícita de excluir ambos — recomendado excluir ambos).
-- [ ] Documentado en README (ejemplo curl).
+- [x] DTO validado (`class-validator` o Zod según ADR) con `whitelist` + `forbidNonWhitelisted`.
+- [x] Controller dispara `CreateUserCommand` (no llama Firestore directo).
+- [x] Respuesta éxito `201 Created` con usuario creado.
+- [x] La respuesta **no** incluye password en plaintext (ni hash, salvo decisión explícita de excluir ambos — recomendado excluir ambos).
+- [x] Documentado en README (ejemplo curl).
 
 **Contrato propuesto**
 
@@ -265,9 +265,9 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Create válido sin campo `password`.
-- [ ] Create válido con `password` (si se proporciona): se hashea y persiste; **no** se regenera en el evento.
-- [ ] Regla documentada: evento de autogeneración solo si password ausente/null/empty.
+- [x] Create válido sin campo `password`.
+- [x] Create válido con `password` (si se proporciona): se hashea y persiste; **no** se regenera después.
+- [x] Regla documentada: si falta password, finalize (await) genera/hashea/actualiza; el evento es señal/audit, no el mutador (ADR-0002).
 
 **Estimación sugerida:** S  
 **Depends on:** US-09
@@ -320,9 +320,9 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Campo persistido es hash (bcrypt), no el string generado/raw del cliente.
-- [ ] Logs no imprimen password ni hash.
-- [ ] Respuestas HTTP no incluyen password/hash.
+- [x] Campo persistido es hash (bcrypt), no el string generado/raw del cliente.
+- [x] Logs no imprimen password ni hash.
+- [x] Respuestas HTTP no incluyen password/hash.
 
 **Estimación sugerida:** S  
 **Depends on:** US-08, US-12
@@ -345,8 +345,8 @@ Content-Type: application/json
 | Firebase/emulator no disponible o error de escritura | `502` o `500` (definir en ADR y mapear en filter) |
 | Error interno no clasificado | `500` sin stack trace al cliente |
 
-- [ ] Errores de dominio tipados; filter global mapea a HTTP.
-- [ ] Tests de al menos validación `400` y un fallo de persistencia mockeado.
+- [x] Errores de dominio tipados; filter global mapea a HTTP.
+- [x] Tests de al menos validación `400` y un fallo de persistencia mockeado.
 
 **Estimación sugerida:** M
 
@@ -360,10 +360,10 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] `GetUserByIdQuery` + handler en archivos independientes.
-- [ ] `200` con datos públicos; `404` si no existe.
-- [ ] No expone password/hash.
-- [ ] Campo opcional `hasPassword: boolean` o `passwordGenerated` si aporta verificación del flujo del reto.
+- [x] `GetUserByIdQuery` + handler en archivos independientes.
+- [x] `200` con datos públicos; `404` si no existe.
+- [x] No expone password/hash.
+- [x] Campo opcional `hasPassword: boolean` o `passwordGenerated` si aporta verificación del flujo del reto.
 
 **Estimación sugerida:** S  
 **Depends on:** US-07, US-03
@@ -382,16 +382,16 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] `npm run test` y `npm run test:cov` documentados.
-- [ ] `coverageThreshold.global.statements: 80` (y branches/functions/lines razonables).
-- [ ] Specs prioritarios:
+- [x] `npm run test` y `npm run test:cov` documentados.
+- [x] `coverageThreshold.global.statements: 80` (y branches/functions/lines razonables).
+- [x] Specs prioritarios:
   - Handler `CreateUser`
-  - Handler del evento de password
+  - `FinalizeMissingPasswordService` + handler de audit del evento (no muta password)
   - Generador / hasher (o adapter)
   - Controller (delegación)
   - Repository adapter (mock Admin SDK / Firestore)
-- [ ] Convención de nombres: `should <behavior> when <condition>`.
-- [ ] Casos clave del reto: create sin password → evento → update; create con password → no regenera.
+- [x] Convención de nombres: `should <behavior> when <condition>`.
+- [x] Casos clave del reto: create sin password → finalize → update + evento audit; create con password → no regenera.
 
 **Estimación sugerida:** L  
 **Depends on:** US-09–US-13
@@ -406,9 +406,9 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Instrucciones: `firebase init` / emulators + `firebase emulators:start` (o script npm).
-- [ ] Nest apunta al emulator vía env (ADR-0003).
-- [ ] No se requieren credenciales de producción para el happy path local.
+- [x] Instrucciones: `firebase init` / emulators + `firebase emulators:start` (o script npm).
+- [x] Nest apunta al emulator vía env (ADR-0003).
+- [x] No se requieren credenciales de producción para el happy path local.
 
 **Estimación sugerida:** M
 
@@ -422,12 +422,12 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Prerrequisitos (Node versión, Firebase CLI).
-- [ ] Cómo configurar `.env` desde `.env.example`.
-- [ ] Cómo levantar emulator + API.
-- [ ] Cómo correr tests.
-- [ ] Ejemplo `curl` de `POST /users` con y sin password.
-- [ ] Enlaces a `docs/requirements/reto.md` y ADRs.
+- [x] Prerrequisitos (Node versión, Firebase CLI).
+- [x] Cómo configurar `.env` desde `.env.example`.
+- [x] Cómo levantar emulator + API.
+- [x] Cómo correr tests.
+- [x] Ejemplo `curl` de `POST /users` con y sin password.
+- [x] Enlaces a `docs/requirements/reto.md` y ADRs.
 
 **Estimación sugerida:** S
 
@@ -441,11 +441,11 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Archivo `.github/workflows/ci.yml`.
-- [ ] Jobs: install → build → `test:cov` (Node LTS acordada).
-- [ ] Falla el pipeline si coverage < 80 % o build falla.
-- [ ] Documentado en ADR-0004 y README.
-- [ ] CD / deploy cloud **fuera de alcance** v1.
+- [x] Archivo `.github/workflows/ci.yml`.
+- [x] Jobs: install → build → `test:cov` (Node LTS acordada).
+- [x] Falla el pipeline si coverage < 80 % o build falla.
+- [x] Documentado en ADR-0004 y README.
+- [x] CD / deploy cloud **fuera de alcance** v1.
 
 **Estimación sugerida:** S
 
@@ -459,9 +459,9 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] ADRs 0001–0007 aceptados en `docs/adr/`.
-- [ ] OpenSpec inicializado; change inicial propuesto/aplicado según flujo `/opsx`.
-- [ ] Mapa US → spec actualizado cuando cambien requisitos.
+- [x] ADRs 0001–0007 aceptados en `docs/adr/`.
+- [x] OpenSpec inicializado; change inicial propuesto/aplicado según flujo `/opsx`.
+- [x] Mapa US → spec actualizado cuando cambien requisitos.
 
 **Estimación sugerida:** M
 
@@ -475,10 +475,10 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Existen `nx.json` y proyecto `api` bajo `apps/api`.
-- [ ] Comandos documentados: serve / build / test (vía Nx o wrappers npm).
-- [ ] CI construye y testea el proyecto `api` (ADR-0004 + ADR-0006).
-- [ ] Sin apps frontend ni libs inventadas “por si acaso”.
+- [x] Existen `nx.json` y proyecto `api` bajo `apps/api`.
+- [x] Comandos documentados: serve / build / test (vía Nx o wrappers npm).
+- [x] CI construye y testea el proyecto `api` (ADR-0004 + ADR-0006).
+- [x] Sin apps frontend ni libs inventadas “por si acaso”.
 
 **Estimación sugerida:** M  
 **Prioridad vs deadline:** P1 — no bloquea el core User si el tiempo aprieta; preferible dejarlo hecho.
@@ -493,10 +493,10 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Carpeta `infra/` con Terraform (`fmt` + `validate` documentados).
-- [ ] Recursos acotados (APIs / Firestore parametrizados); sin landing zone gigante.
-- [ ] Sin secretos ni state sensible en git.
-- [ ] README distingue: runtime challenge = emulator; cloud = `terraform plan`.
+- [x] Carpeta `infra/` con Terraform (`fmt` + `validate` documentados).
+- [x] Recursos acotados (APIs / Firestore parametrizados); sin landing zone gigante.
+- [x] Sin secretos ni state sensible en git.
+- [x] README distingue: runtime challenge = emulator; cloud = `terraform plan`.
 
 **Estimación sugerida:** M  
 **Prioridad vs deadline:** P1 — complementary; demoran menos que el flujo CQRS+tests.

@@ -133,8 +133,8 @@ Como el reto Pokemon referencial. **Veredicto:** Descartada — el equipo exige 
 
 ## Criterios de aceptación
 
-- [ ] No hay lógica de negocio en controllers.
-- [ ] Cada command/query/event handler vive en su archivo.
-- [ ] Domain sin Firebase/Nest HTTP.
-- [ ] Evento de create cubre generación de password cuando falta.
-- [ ] Tests de handlers con ports mockeados (ver US-16).
+- [x] No hay lógica de negocio en controllers.
+- [x] Cada command/query/event handler vive en su archivo.
+- [x] Domain sin Firebase/Nest HTTP.
+- [x] Si falta password: `FinalizeMissingPasswordService` (await) genera, hashea y actualiza **antes** del `201`; `UserCreatedEvent` es solo señal/audit (el `@EventsHandler` no muta password).
+- [x] Tests de handlers con ports mockeados (ver US-16).

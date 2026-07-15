@@ -84,7 +84,7 @@ Señal clara, costo acotado.
 
 ## Criterios de aceptación
 
-- [ ] Workspace Nx con proyecto `api`.
-- [ ] README documenta comandos Nx (o npm wrappers).
-- [ ] CI usa build/test del proyecto `api`.
-- [ ] No hay apps FE/libs especulativas en v1.
+- [x] Workspace Nx con proyecto `api`.
+- [x] README documenta comandos Nx (o npm wrappers).
+- [x] CI usa build/test del proyecto `api`.
+- [x] No hay apps FE/libs especulativas en v1.

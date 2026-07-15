@@ -90,6 +90,6 @@ reto-geekscastle/
 
 ## Criterios de aceptación
 
-- [ ] Nest arranca en local con health `200`.
-- [ ] Árbol de carpetas alineado a este ADR (o desviación documentada en enmienda).
-- [ ] `.env.example` + `.gitignore` correctos.
+- [x] Nest arranca en local con health `200`.
+- [x] Árbol de carpetas alineado a este ADR (o desviación documentada en enmienda).
+- [x] `.env.example` + `.gitignore` correctos.

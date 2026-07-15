@@ -70,7 +70,7 @@ Señal IaC + entrega del desafio intacta.
 
 ## Criterios de aceptación
 
-- [ ] Carpeta `infra/` con configuración Terraform formateada.
-- [ ] `terraform validate` documentado (y ejecutado al menos en autoría).
-- [ ] Sin secretos ni state sensible en el repo.
-- [ ] Docs cruzan a ADR-0003 (emulator) y ADR-0005 (secretos).
+- [x] Carpeta `infra/` con configuración Terraform formateada.
+- [x] `terraform validate` documentado (y ejecutado al menos en autoría / CI).
+- [x] Sin secretos ni state sensible en el repo.
+- [x] Docs cruzan a ADR-0003 (emulator) y ADR-0005 (secretos).

@@ -82,7 +82,7 @@ Alineado a pistas del reto.
 
 ## Criterios de aceptación
 
-- [ ] Adapter Firestore implementa `UserRepositoryPort`.
-- [ ] Happy path local contra emulator documentado.
-- [ ] `.env.example` con vars de emulator.
-- [ ] Ningún JSON de service account commiteado.
+- [x] Adapter Firestore implementa `UserRepositoryPort`.
+- [x] Happy path local contra emulator documentado.
+- [x] `.env.example` con vars de emulator.
+- [x] Ningún JSON de service account commiteado.

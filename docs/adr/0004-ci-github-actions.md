@@ -71,6 +71,6 @@ Mínimo que cumple el requisito del equipo.
 
 ## Criterios de aceptación
 
-- [ ] Existe `.github/workflows/ci.yml`.
-- [ ] README sección CI.
-- [ ] Pipeline rojo si coverage < 80 % o build falla.
+- [x] Existe `.github/workflows/ci.yml`.
+- [x] README sección CI.
+- [x] Pipeline rojo si coverage < 80 % o build falla.
