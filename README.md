@@ -1,7 +1,7 @@
 # Reto GeeksCastle — Users API
 
 API **NestJS** (hexagonal + **CQRS**) + **Firebase Firestore**, orquestada con **Nx lite**, IaC **Terraform lite**.  
-Al crear un usuario sin `password`, un evento de dominio genera uno seguro, lo hashea (bcrypt) y actualiza el documento (await en el request path).
+Al crear un usuario sin `password`, `FinalizeMissingPasswordService` genera uno seguro, lo hashea (bcrypt) y actualiza el documento **en el request path** (await). Luego se publica `UserCreatedEvent` como señal de dominio/audit — Nest `EventBus` no espera handlers (ADR-0002), así que la generación **no** vive en el `@EventsHandler`.
 
 **Deadline de entrega:** antes del **2026-07-16 12:00 CDMX**.
 
@@ -66,7 +66,7 @@ curl -s http://localhost:3000/api/v1/users/<id>
 
 Si falla la generación/persistencia del password tras el insert, el create no responde 201 y se intenta borrar el documento (best-effort; un crash a mitad podría dejar un huérfano residual).
 
-El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. Hay una ventana TOCTOU remota bajo creates concurrentes (check-then-create; suficiente para el challenge).
+El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. La unicidad se refuerza con un claim en colección `emails/{email}` (`create` atómico) además del documento en `users`.
 
 ## Tests
 

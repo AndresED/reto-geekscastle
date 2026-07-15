@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { CreateUserHandler } from './application/commands/handlers/create-user.handler';
+import { UserCreatedAuditHandler } from './application/events/handlers/user-created-audit.handler';
 import { FinalizeMissingPasswordService } from './application/finalize-missing-password.service';
 import { GetUserByIdHandler } from './application/queries/handlers/get-user-by-id.handler';
 import { PASSWORD_GENERATOR_PORT } from './domain/ports/password-generator.port';
@@ -14,6 +15,7 @@ import { FirestoreUserRepository } from './infrastructure/persistence/firestore-
 
 const commandHandlers = [CreateUserHandler];
 const queryHandlers = [GetUserByIdHandler];
+const eventHandlers = [UserCreatedAuditHandler];
 
 @Module({
   imports: [CqrsModule],
@@ -23,6 +25,7 @@ const queryHandlers = [GetUserByIdHandler];
     FinalizeMissingPasswordService,
     ...commandHandlers,
     ...queryHandlers,
+    ...eventHandlers,
     {
       provide: USER_REPOSITORY_PORT,
       useClass: FirestoreUserRepository,

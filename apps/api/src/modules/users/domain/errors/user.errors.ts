@@ -2,7 +2,6 @@ import {
   ConflictDomainError,
   NotFoundDomainError,
   PersistenceDomainError,
-  ValidationDomainError,
 } from '../../../../shared/errors/domain.error';
 
 export class UserNotFoundError extends NotFoundDomainError {
@@ -20,11 +19,5 @@ export class UserPersistenceError extends PersistenceDomainError {
 export class UserEmailConflictError extends ConflictDomainError {
   constructor(email: string) {
     super(`Email already registered: ${email}`);
-  }
-}
-
-export class InvalidUserError extends ValidationDomainError {
-  constructor(message: string) {
-    super(message);
   }
 }

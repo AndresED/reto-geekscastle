@@ -15,53 +15,11 @@ import {
 } from '../domain/ports/user-repository.port';
 import { BcryptPasswordHasher } from '../infrastructure/crypto/bcrypt-password.hasher';
 import { CryptoPasswordGenerator } from '../infrastructure/crypto/crypto-password.generator';
+import { InMemoryUserRepository } from '../testing/in-memory-user.repository';
 import { CreateUserCommand } from './commands/create-user.command';
-import {
-  CreateUserHandler,
-  CreateUserResult,
-} from './commands/handlers/create-user.handler';
+import { CreateUserHandler } from './commands/handlers/create-user.handler';
+import { CreateUserResult } from './create-user.result';
 import { FinalizeMissingPasswordService } from './finalize-missing-password.service';
-
-class InMemoryUserRepository implements UserRepositoryPort {
-  private readonly store = new Map<string, User>();
-
-  async create(user: User): Promise<User> {
-    this.store.set(user.id, user);
-    return user;
-  }
-
-  async updatePassword(
-    userId: string,
-    passwordHash: string,
-    passwordGenerated: boolean,
-  ): Promise<User> {
-    const existing = this.store.get(userId);
-    if (!existing) {
-      throw new Error(`missing ${userId}`);
-    }
-    const updated = existing.withPasswordHash(passwordHash, passwordGenerated);
-    this.store.set(userId, updated);
-    return updated;
-  }
-
-  async findById(id: string): Promise<User | null> {
-    return this.store.get(id) ?? null;
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    const normalized = email.trim().toLowerCase();
-    for (const user of this.store.values()) {
-      if (user.email === normalized) {
-        return user;
-      }
-    }
-    return null;
-  }
-
-  async delete(id: string): Promise<void> {
-    this.store.delete(id);
-  }
-}
 
 describe('Create user password smoke', () => {
   let moduleRef: TestingModule;
@@ -113,10 +71,12 @@ describe('Create user password smoke', () => {
     expect(stored?.passwordHash).toMatch(/^\$2[aby]?\$/);
   });
 
-  it('should fail create when password update rejects', async () => {
+  it('should fail create when password update rejects and leave no orphan', async () => {
     const store = new Map<string, User>();
+    const emails = new Map<string, string>();
     const failingRepo: UserRepositoryPort = {
       create: async (user) => {
+        emails.set(user.email, user.id);
         store.set(user.id, user);
         return user;
       },
@@ -124,9 +84,16 @@ describe('Create user password smoke', () => {
         throw new Error('forced update failure');
       },
       findById: async (id) => store.get(id) ?? null,
-      findByEmail: async () => null,
+      findByEmail: async (email) => {
+        const id = emails.get(email.trim().toLowerCase());
+        return id ? (store.get(id) ?? null) : null;
+      },
       delete: async (id) => {
+        const user = store.get(id);
         store.delete(id);
+        if (user) {
+          emails.delete(user.email);
+        }
       },
     };
 
@@ -159,6 +126,7 @@ describe('Create user password smoke', () => {
     ).rejects.toThrow('forced update failure');
 
     expect(store.size).toBe(0);
+    expect(emails.size).toBe(0);
 
     await local.close();
   });

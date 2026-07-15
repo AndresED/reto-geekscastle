@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Firestore } from 'firebase-admin/firestore';
 import { User } from '../../domain/entities/user.entity';
-import { UserPersistenceError } from '../../domain/errors/user.errors';
+import {
+  UserEmailConflictError,
+  UserPersistenceError,
+} from '../../domain/errors/user.errors';
 import type { UserRepositoryPort } from '../../domain/ports/user-repository.port';
 import { FIRESTORE } from '../firebase/firebase-admin.provider';
 
@@ -14,25 +17,50 @@ type UserDoc = {
   updatedAt: string;
 };
 
+type EmailClaimDoc = {
+  userId: string;
+  createdAt: string;
+};
+
 @Injectable()
 export class FirestoreUserRepository implements UserRepositoryPort {
-  private readonly collection = 'users';
+  private readonly usersCollection = 'users';
+  private readonly emailsCollection = 'emails';
 
   constructor(@Inject(FIRESTORE) private readonly db: Firestore) {}
 
   async create(user: User): Promise<User> {
+    const emailRef = this.db.collection(this.emailsCollection).doc(user.email);
+    const userRef = this.db.collection(this.usersCollection).doc(user.id);
+    const claim: EmailClaimDoc = {
+      userId: user.id,
+      createdAt: user.createdAt.toISOString(),
+    };
+    const doc: UserDoc = {
+      username: user.username,
+      email: user.email,
+      passwordHash: user.passwordHash,
+      passwordGenerated: user.passwordGenerated,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    };
+
     try {
-      const doc: UserDoc = {
-        username: user.username,
-        email: user.email,
-        passwordHash: user.passwordHash,
-        passwordGenerated: user.passwordGenerated,
-        createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString(),
-      };
-      await this.db.collection(this.collection).doc(user.id).set(doc);
+      await emailRef.create(claim);
+    } catch (error) {
+      if (isAlreadyExists(error)) {
+        throw new UserEmailConflictError(user.email);
+      }
+      throw new UserPersistenceError(
+        `Failed to claim email: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    try {
+      await userRef.set(doc);
       return user;
     } catch (error) {
+      await emailRef.delete().catch(() => undefined);
       throw new UserPersistenceError(
         `Failed to create user: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -45,7 +73,7 @@ export class FirestoreUserRepository implements UserRepositoryPort {
     passwordGenerated: boolean,
   ): Promise<User> {
     try {
-      const ref = this.db.collection(this.collection).doc(userId);
+      const ref = this.db.collection(this.usersCollection).doc(userId);
       const snap = await ref.get();
       if (!snap.exists) {
         throw new UserPersistenceError(
@@ -76,7 +104,7 @@ export class FirestoreUserRepository implements UserRepositoryPort {
 
   async findById(id: string): Promise<User | null> {
     try {
-      const snap = await this.db.collection(this.collection).doc(id).get();
+      const snap = await this.db.collection(this.usersCollection).doc(id).get();
       if (!snap.exists) {
         return null;
       }
@@ -91,16 +119,15 @@ export class FirestoreUserRepository implements UserRepositoryPort {
   async findByEmail(email: string): Promise<User | null> {
     try {
       const normalized = email.trim().toLowerCase();
-      const snap = await this.db
-        .collection(this.collection)
-        .where('email', '==', normalized)
-        .limit(1)
+      const claim = await this.db
+        .collection(this.emailsCollection)
+        .doc(normalized)
         .get();
-      if (snap.empty) {
+      if (!claim.exists) {
         return null;
       }
-      const doc = snap.docs[0];
-      return this.toUser(doc.id, doc.data() as UserDoc);
+      const userId = (claim.data() as EmailClaimDoc).userId;
+      return this.findById(userId);
     } catch (error) {
       throw new UserPersistenceError(
         `Failed to find user by email: ${error instanceof Error ? error.message : String(error)}`,
@@ -110,7 +137,13 @@ export class FirestoreUserRepository implements UserRepositoryPort {
 
   async delete(id: string): Promise<void> {
     try {
-      await this.db.collection(this.collection).doc(id).delete();
+      const user = await this.findById(id);
+      const batch = this.db.batch();
+      batch.delete(this.db.collection(this.usersCollection).doc(id));
+      if (user) {
+        batch.delete(this.db.collection(this.emailsCollection).doc(user.email));
+      }
+      await batch.commit();
     } catch (error) {
       throw new UserPersistenceError(
         `Failed to delete user: ${error instanceof Error ? error.message : String(error)}`,
@@ -129,4 +162,16 @@ export class FirestoreUserRepository implements UserRepositoryPort {
       updatedAt: new Date(data.updatedAt),
     });
   }
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const code = (error as { code?: number | string }).code;
+  if (code === 6 || code === 'already-exists' || code === 'ALREADY_EXISTS') {
+    return true;
+  }
+  const message = (error as { message?: string }).message ?? '';
+  return /ALREADY_EXISTS|already exists/i.test(message);
 }

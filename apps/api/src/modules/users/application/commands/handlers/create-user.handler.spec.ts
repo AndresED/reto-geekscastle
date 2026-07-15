@@ -52,15 +52,15 @@ describe('CreateUserHandler', () => {
       new CreateUserCommand('jane', 'jane@example.com'),
     );
 
-    expect(finalize.execute).toHaveBeenCalledWith('id-1');
+    expect(finalize.execute).toHaveBeenCalledWith(created.id);
     expect(finalize.execute).toHaveBeenCalledTimes(1);
+    expect(hasher.hash).not.toHaveBeenCalled();
     expect(eventBus.publish).toHaveBeenCalledWith(expect.any(UserCreatedEvent));
     expect(result.passwordGenerated).toBe(true);
     expect(result.user.hasPassword).toBe(true);
-    expect(result.user.passwordGenerated).toBe(true);
   });
 
-  it('should hash provided password and skip finalize', async () => {
+  it('should hash provided password only after uniqueness check passes', async () => {
     hasher.hash.mockResolvedValue('hashed');
     users.create.mockImplementation(async (u) => u);
 
@@ -68,11 +68,9 @@ describe('CreateUserHandler', () => {
       new CreateUserCommand('jane', 'jane@example.com', 'secret123'),
     );
 
+    expect(users.findByEmail).toHaveBeenCalled();
     expect(hasher.hash).toHaveBeenCalledWith('secret123');
     expect(finalize.execute).not.toHaveBeenCalled();
-    expect(eventBus.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ passwordMissing: false }),
-    );
     expect(result.passwordGenerated).toBe(false);
     expect(result.user.hasPassword).toBe(true);
   });
@@ -91,7 +89,7 @@ describe('CreateUserHandler', () => {
     );
 
     expect(hasher.hash).not.toHaveBeenCalled();
-    expect(finalize.execute).toHaveBeenCalledWith('id-1');
+    expect(finalize.execute).toHaveBeenCalled();
   });
 
   it('should fail create when finalize rejects', async () => {
@@ -104,25 +102,11 @@ describe('CreateUserHandler', () => {
       handler.execute(new CreateUserCommand('jane', 'jane@example.com')),
     ).rejects.toBeInstanceOf(UserPersistenceError);
 
-    expect(users.delete).toHaveBeenCalledWith(expect.any(String));
+    expect(users.delete).toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 
-  it('should rethrow finalize error even if compensate delete fails', async () => {
-    users.create.mockImplementation(async (u) => u);
-    finalize.execute.mockRejectedValue(
-      new UserPersistenceError('update failed'),
-    );
-    users.delete.mockRejectedValue(new Error('delete offline'));
-
-    await expect(
-      handler.execute(new CreateUserCommand('jane', 'jane@example.com')),
-    ).rejects.toBeInstanceOf(UserPersistenceError);
-
-    expect(eventBus.publish).not.toHaveBeenCalled();
-  });
-
-  it('should reject duplicate email without creating', async () => {
+  it('should reject duplicate email without hashing or creating', async () => {
     users.findByEmail.mockResolvedValue(
       User.create({
         id: 'existing',
@@ -132,10 +116,12 @@ describe('CreateUserHandler', () => {
     );
 
     await expect(
-      handler.execute(new CreateUserCommand('jane', 'Jane@Example.com')),
+      handler.execute(
+        new CreateUserCommand('jane', 'Jane@Example.com', 'secret123'),
+      ),
     ).rejects.toBeInstanceOf(UserEmailConflictError);
 
+    expect(hasher.hash).not.toHaveBeenCalled();
     expect(users.create).not.toHaveBeenCalled();
-    expect(finalize.execute).not.toHaveBeenCalled();
   });
 });

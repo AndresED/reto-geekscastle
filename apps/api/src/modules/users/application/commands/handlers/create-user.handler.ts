@@ -15,13 +15,9 @@ import {
   USER_REPOSITORY_PORT,
   type UserRepositoryPort,
 } from '../../../domain/ports/user-repository.port';
+import { CreateUserResult } from '../../create-user.result';
 import { FinalizeMissingPasswordService } from '../../finalize-missing-password.service';
 import { CreateUserCommand } from '../create-user.command';
-
-export type CreateUserResult = {
-  user: User;
-  passwordGenerated: boolean;
-};
 
 @CommandHandler(CreateUserCommand)
 export class CreateUserHandler
@@ -44,23 +40,31 @@ export class CreateUserHandler
       command.password === null ||
       command.password.trim() === '';
 
+    const id = randomUUID();
+    const emailProbe = User.create({
+      id,
+      username: command.username,
+      email: command.email,
+      passwordHash: null,
+    });
+
+    const existing = await this.users.findByEmail(emailProbe.email);
+    if (existing) {
+      throw new UserEmailConflictError(emailProbe.email);
+    }
+
     let passwordHash: string | null = null;
     if (!passwordMissing) {
       passwordHash = await this.hasher.hash(command.password!.trim());
     }
 
     const user = User.create({
-      id: randomUUID(),
+      id,
       username: command.username,
       email: command.email,
       passwordHash,
       passwordGenerated: false,
     });
-
-    const existing = await this.users.findByEmail(user.email);
-    if (existing) {
-      throw new UserEmailConflictError(user.email);
-    }
 
     const created = await this.users.create(user);
 

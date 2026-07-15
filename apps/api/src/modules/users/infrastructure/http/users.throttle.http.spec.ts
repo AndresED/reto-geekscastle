@@ -1,6 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { CommandBus, CqrsModule, QueryBus } from '@nestjs/cqrs';
+import { CqrsModule } from '@nestjs/cqrs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
@@ -8,7 +8,6 @@ import { App } from 'supertest/types';
 import { CreateUserHandler } from '../../application/commands/handlers/create-user.handler';
 import { FinalizeMissingPasswordService } from '../../application/finalize-missing-password.service';
 import { GetUserByIdHandler } from '../../application/queries/handlers/get-user-by-id.handler';
-import { User } from '../../domain/entities/user.entity';
 import {
   PASSWORD_GENERATOR_PORT,
   type PasswordGeneratorPort,
@@ -17,53 +16,11 @@ import {
   PASSWORD_HASHER_PORT,
   type PasswordHasherPort,
 } from '../../domain/ports/password-hasher.port';
-import {
-  USER_REPOSITORY_PORT,
-  type UserRepositoryPort,
-} from '../../domain/ports/user-repository.port';
+import { USER_REPOSITORY_PORT } from '../../domain/ports/user-repository.port';
+import { InMemoryUserRepository } from '../../testing/in-memory-user.repository';
 import { HealthController } from '../../../../shared/health/health.controller';
+import { USERS_WRITE_THROTTLE } from './throttle.constants';
 import { UsersController } from './users.controller';
-
-class InMemoryUserRepository implements UserRepositoryPort {
-  private readonly store = new Map<string, User>();
-
-  async create(user: User): Promise<User> {
-    this.store.set(user.id, user);
-    return user;
-  }
-
-  async updatePassword(
-    userId: string,
-    passwordHash: string,
-    passwordGenerated: boolean,
-  ): Promise<User> {
-    const existing = this.store.get(userId);
-    if (!existing) {
-      throw new Error(`missing ${userId}`);
-    }
-    const updated = existing.withPasswordHash(passwordHash, passwordGenerated);
-    this.store.set(userId, updated);
-    return updated;
-  }
-
-  async findById(id: string): Promise<User | null> {
-    return this.store.get(id) ?? null;
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    const normalized = email.trim().toLowerCase();
-    for (const user of this.store.values()) {
-      if (user.email === normalized) {
-        return user;
-      }
-    }
-    return null;
-  }
-
-  async delete(id: string): Promise<void> {
-    this.store.delete(id);
-  }
-}
 
 describe('Users create throttle (HTTP)', () => {
   let app: App;
@@ -73,10 +30,11 @@ describe('Users create throttle (HTTP)', () => {
     moduleRef = await Test.createTestingModule({
       imports: [
         CqrsModule,
+        // Faster assertion than production limit; values for ttl/name stay aligned.
         ThrottlerModule.forRoot([
           {
-            name: 'default',
-            ttl: 60_000,
+            name: USERS_WRITE_THROTTLE.name,
+            ttl: USERS_WRITE_THROTTLE.ttl,
             limit: 2,
           },
         ]),
@@ -117,14 +75,15 @@ describe('Users create throttle (HTTP)', () => {
     );
     await nestApp.init();
     app = nestApp.getHttpServer();
-
-    // Ensure CQRS handlers are discovered
-    void moduleRef.get(CommandBus);
-    void moduleRef.get(QueryBus);
   });
 
   afterAll(async () => {
     await moduleRef.close();
+  });
+
+  it('should export production throttle limit constant', () => {
+    expect(USERS_WRITE_THROTTLE.limit).toBe(20);
+    expect(USERS_WRITE_THROTTLE.ttl).toBe(60_000);
   });
 
   it('should return 429 after create limit and keep health available', async () => {

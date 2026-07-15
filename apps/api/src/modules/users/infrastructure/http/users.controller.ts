@@ -10,7 +10,7 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { SkipThrottle } from '@nestjs/throttler';
 import { CreateUserCommand } from '../../application/commands/create-user.command';
-import { CreateUserResult } from '../../application/commands/handlers/create-user.handler';
+import { CreateUserResult } from '../../application/create-user.result';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id.query';
 import { User } from '../../domain/entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';

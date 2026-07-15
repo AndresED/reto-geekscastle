@@ -1,6 +1,9 @@
 import { Firestore } from 'firebase-admin/firestore';
 import { User } from '../../domain/entities/user.entity';
-import { UserPersistenceError } from '../../domain/errors/user.errors';
+import {
+  UserEmailConflictError,
+  UserPersistenceError,
+} from '../../domain/errors/user.errors';
 import { FirestoreUserRepository } from './firestore-user.repository';
 
 describe('FirestoreUserRepository', () => {
@@ -8,25 +11,60 @@ describe('FirestoreUserRepository', () => {
   const update = jest.fn();
   const get = jest.fn();
   const del = jest.fn();
-  const whereGet = jest.fn();
-  const limit = jest.fn(() => ({ get: whereGet }));
-  const where = jest.fn(() => ({ limit }));
-  const doc = jest.fn(() => ({ set, update, get, delete: del }));
-  const collection = jest.fn(() => ({ doc, where }));
-  const db = { collection } as unknown as Firestore;
+  const create = jest.fn();
+  const batchDelete = jest.fn();
+  const batchCommit = jest.fn();
+  const batch = jest.fn(() => ({
+    delete: batchDelete,
+    commit: batchCommit,
+  }));
 
+  const emailDoc = { create, get, delete: del };
+  const userDoc = { set, update, get, delete: del };
+
+  const doc = jest.fn((id: string) => {
+    // heuristic: uuid-like or id-1 → user; emails → email claim docs
+    return id.includes('@') || id === 'jane@example.com' ? emailDoc : userDoc;
+  });
+
+  const collection = jest.fn((name: string) => {
+    if (name === 'emails') {
+      return {
+        doc: (email: string) => {
+          void email;
+          return emailDoc;
+        },
+      };
+    }
+    return {
+      doc: (id: string) => {
+        void id;
+        return userDoc;
+      },
+    };
+  });
+
+  const db = { collection, batch } as unknown as Firestore;
   let repo: FirestoreUserRepository;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    doc.mockReturnValue({ set, update, get, delete: del });
-    limit.mockReturnValue({ get: whereGet });
-    where.mockReturnValue({ limit });
-    collection.mockReturnValue({ doc, where });
+    collection.mockImplementation((name: string) => {
+      if (name === 'emails') {
+        return {
+          doc: () => emailDoc,
+        };
+      }
+      return {
+        doc: () => userDoc,
+      };
+    });
+    batch.mockReturnValue({ delete: batchDelete, commit: batchCommit });
     repo = new FirestoreUserRepository(db);
   });
 
-  it('should persist user document on create', async () => {
+  it('should claim email then persist user on create', async () => {
+    create.mockResolvedValue(undefined);
     set.mockResolvedValue(undefined);
     const user = User.create({
       id: 'id-1',
@@ -36,8 +74,11 @@ describe('FirestoreUserRepository', () => {
 
     const created = await repo.create(user);
 
+    expect(collection).toHaveBeenCalledWith('emails');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'id-1' }),
+    );
     expect(collection).toHaveBeenCalledWith('users');
-    expect(doc).toHaveBeenCalledWith('id-1');
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
         username: 'jane',
@@ -48,8 +89,24 @@ describe('FirestoreUserRepository', () => {
     expect(created.id).toBe('id-1');
   });
 
-  it('should throw UserPersistenceError when create fails', async () => {
+  it('should map email claim ALREADY_EXISTS to UserEmailConflictError', async () => {
+    create.mockRejectedValue({ code: 6, message: 'ALREADY_EXISTS' });
+    const user = User.create({
+      id: 'id-1',
+      username: 'jane',
+      email: 'jane@example.com',
+    });
+
+    await expect(repo.create(user)).rejects.toBeInstanceOf(
+      UserEmailConflictError,
+    );
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('should release email claim when user set fails', async () => {
+    create.mockResolvedValue(undefined);
     set.mockRejectedValue(new Error('offline'));
+    del.mockResolvedValue(undefined);
     const user = User.create({
       id: 'id-1',
       username: 'jane',
@@ -59,31 +116,36 @@ describe('FirestoreUserRepository', () => {
     await expect(repo.create(user)).rejects.toBeInstanceOf(
       UserPersistenceError,
     );
+    expect(del).toHaveBeenCalled();
   });
 
-  it('should map findById document to domain user', async () => {
-    get.mockResolvedValue({
-      exists: true,
-      id: 'id-1',
-      data: () => ({
-        username: 'jane',
-        email: 'jane@example.com',
-        passwordHash: 'h',
-        passwordGenerated: true,
-        createdAt: '2026-07-15T00:00:00.000Z',
-        updatedAt: '2026-07-15T00:00:00.000Z',
-      }),
-    });
+  it('should find by email via claim doc', async () => {
+    get
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ userId: 'id-1', createdAt: '2026-07-15T00:00:00.000Z' }),
+      })
+      .mockResolvedValueOnce({
+        exists: true,
+        id: 'id-1',
+        data: () => ({
+          username: 'jane',
+          email: 'jane@example.com',
+          passwordHash: 'h',
+          passwordGenerated: true,
+          createdAt: '2026-07-15T00:00:00.000Z',
+          updatedAt: '2026-07-15T00:00:00.000Z',
+        }),
+      });
 
-    const user = await repo.findById('id-1');
-
+    const user = await repo.findByEmail('Jane@Example.com');
+    expect(user?.id).toBe('id-1');
     expect(user?.hasPassword).toBe(true);
-    expect(user?.passwordGenerated).toBe(true);
   });
 
-  it('should return null when document missing', async () => {
+  it('should return null when claim missing', async () => {
     get.mockResolvedValue({ exists: false });
-    await expect(repo.findById('missing')).resolves.toBeNull();
+    await expect(repo.findByEmail('missing@example.com')).resolves.toBeNull();
   });
 
   it('should update password hash on existing user', async () => {
@@ -111,34 +173,24 @@ describe('FirestoreUserRepository', () => {
     expect(updated.passwordHash).toBe('new-hash');
   });
 
-  it('should delete user document', async () => {
-    del.mockResolvedValue(undefined);
-    await repo.delete('id-1');
-    expect(doc).toHaveBeenCalledWith('id-1');
-    expect(del).toHaveBeenCalled();
-  });
-
-  it('should find user by normalized email', async () => {
-    whereGet.mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          id: 'id-1',
-          data: () => ({
-            username: 'jane',
-            email: 'jane@example.com',
-            passwordHash: null,
-            passwordGenerated: false,
-            createdAt: '2026-07-15T00:00:00.000Z',
-            updatedAt: '2026-07-15T00:00:00.000Z',
-          }),
-        },
-      ],
+  it('should delete user and email claim', async () => {
+    get.mockResolvedValue({
+      exists: true,
+      id: 'id-1',
+      data: () => ({
+        username: 'jane',
+        email: 'jane@example.com',
+        passwordHash: null,
+        passwordGenerated: false,
+        createdAt: '2026-07-15T00:00:00.000Z',
+        updatedAt: '2026-07-15T00:00:00.000Z',
+      }),
     });
+    batchCommit.mockResolvedValue(undefined);
 
-    const user = await repo.findByEmail('Jane@Example.com');
+    await repo.delete('id-1');
 
-    expect(where).toHaveBeenCalledWith('email', '==', 'jane@example.com');
-    expect(user?.id).toBe('id-1');
+    expect(batchDelete).toHaveBeenCalled();
+    expect(batchCommit).toHaveBeenCalled();
   });
 });

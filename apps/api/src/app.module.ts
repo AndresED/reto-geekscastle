@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { USERS_WRITE_THROTTLE } from './modules/users/infrastructure/http/throttle.constants';
 import { UsersModule } from './modules/users/users.module';
 import { validateEnv } from './shared/config/env.validation';
 import { HealthController } from './shared/health/health.controller';
@@ -13,13 +14,7 @@ import { HealthController } from './shared/health/health.controller';
       envFilePath: ['.env', '../../.env'],
       validate: validateEnv,
     }),
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60_000,
-        limit: 20,
-      },
-    ]),
+    ThrottlerModule.forRoot([USERS_WRITE_THROTTLE]),
     UsersModule,
   ],
   controllers: [HealthController],

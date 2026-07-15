@@ -282,12 +282,12 @@ Content-Type: application/json
 
 **Criterios de aceptación**
 
-- [ ] Tras persistir el usuario, se publica un evento (ej. `UserCreatedEvent`) — archivo propio.
-- [ ] Handler del evento en archivo propio (ej. `UserCreatedHandler` / `GeneratePasswordOnUserCreatedHandler`).
-- [ ] El evento carga al menos `userId` y señal de si faltaba password.
-- [ ] El flujo es testeable con EventBus mockeado o integración unitaria del handler.
+- [x] Tras persistir el usuario (y finalize de password si aplica), se publica un evento (`UserCreatedEvent`) — archivo propio.
+- [x] Handler del evento en archivo propio (`UserCreatedAuditHandler`) — **solo audit/log**; no muta password.
+- [x] El evento carga al menos `userId` y señal de si faltaba password.
+- [x] El flujo es testeable con EventBus mockeado o unit del handler de audit.
 
-**Nota de diseño (vinculante en ADR-0002):** el reto pide que el evento genere password y actualice el registro; el command de create puede insertar primero con `password: null` y dejar el side-effect al event handler, **o** emitir el evento dentro de la misma unidad de trabajo de aplicación. No se usa un trigger nativo de Firestore Cloud Function como única solución (el evaluador espera Nest + Clean Architecture).
+**Nota de diseño (vinculante en ADR-0002):** Nest `EventBus.publish` **no espera** `@EventsHandler`. La generación/hash/update del password cuando falta corre en `FinalizeMissingPasswordService` (await desde el command). El evento es señal de dominio; el handler de evento no es el mutador. No se usa Cloud Function como única solución.
 
 **Estimación sugerida:** M  
 **Depends on:** US-09, US-10
@@ -297,15 +297,15 @@ Content-Type: application/json
 #### US-12 — Generar password seguro y actualizar registro
 
 **Como** sistema,  
-**quiero** que el handler del evento genere un password seguro y actualice el usuario en Firebase,  
-**para** completar el registro cuando el cliente no envió password.
+**quiero** que el path de finalize en application genere un password seguro y actualice el usuario en Firebase,  
+**para** completar el registro cuando el cliente no envió password (con respuesta HTTP consistente).
 
 **Criterios de aceptación**
 
-- [ ] Si `password` ya existía: handler no-op (idempotente / early return).
-- [ ] Si faltaba: genera → hashea → `repository.update` en Firestore.
-- [ ] Password generado cumple política (longitud, charset) del ADR-0005.
-- [ ] Caso cubierto por test unitario del handler (ports mockeados).
+- [x] Si `password` ya existía / ya hay hash: finalize no-op (idempotente / early return).
+- [x] Si faltaba: genera → hashea → `repository.updatePassword` en Firestore (await antes del 201).
+- [x] Password generado cumple política (longitud, charset) del ADR-0005.
+- [x] Caso cubierto por test unitario de `FinalizeMissingPasswordService` (ports mockeados) + smoke.
 
 **Estimación sugerida:** M  
 **Depends on:** US-08, US-11
@@ -509,9 +509,10 @@ sequenceDiagram
   participant Ctrl as UsersController
   participant Bus as CommandBus/EventBus
   participant CH as CreateUserHandler
+  participant Fin as FinalizeMissingPassword
   participant Repo as UserRepositoryPort
   participant FS as Firestore
-  participant EH as UserCreatedHandler
+  participant Audit as UserCreatedAuditHandler
   participant Gen as PasswordGenerator/Hasher
 
   C->>Ctrl: POST /users {username,email[,password]}
@@ -519,18 +520,19 @@ sequenceDiagram
   Bus->>CH: execute
   alt password enviado
     CH->>Gen: hash(password)
-    CH->>Repo: create(user con hash)
-    Repo->>FS: set doc
+    CH->>Repo: create(user con hash + email claim)
+    Repo->>FS: emails create + users set
     CH->>Bus: UserCreatedEvent(passwordMissing=false)
   else password omitido
-    CH->>Repo: create(user sin password)
-    Repo->>FS: set doc
-    CH->>Bus: UserCreatedEvent(passwordMissing=true)
-    Bus->>EH: handle
-    EH->>Gen: generate + hash
-    EH->>Repo: update(userId, passwordHash)
+    CH->>Repo: create(user sin password + email claim)
+    Repo->>FS: emails create + users set
+    CH->>Fin: execute(userId) await
+    Fin->>Gen: generate + hash
+    Fin->>Repo: updatePassword
     Repo->>FS: update doc
+    CH->>Bus: UserCreatedEvent(passwordMissing=true)
   end
+  Bus-->>Audit: log only (no mutate)
   CH-->>C: 201 UserResponse (sin secretos)
 ```
 

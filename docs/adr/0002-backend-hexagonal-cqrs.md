@@ -79,7 +79,8 @@ modules/users/
 │   ├── commands/handlers/create-user.handler.ts
 │   ├── queries/get-user-by-id.query.ts
 │   ├── queries/handlers/get-user-by-id.handler.ts
-│   └── finalize-missing-password.service.ts
+│   ├── finalize-missing-password.service.ts
+│   └── events/handlers/user-created-audit.handler.ts  # log only
 ├── infrastructure/
 │   ├── persistence/firestore-user.repository.ts
 │   ├── crypto/crypto-password.generator.ts

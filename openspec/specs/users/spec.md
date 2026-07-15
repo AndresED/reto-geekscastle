@@ -36,15 +36,19 @@ When a password is provided or generated, the system MUST store only a bcrypt ha
 - **THEN** the repository create/update payload contains a hash and not the original plaintext
 
 ### Requirement: User created domain event
-After a user document is inserted, the system MUST publish a `UserCreatedEvent` (or equivalent) indicating whether a password was missing.
+After a user document is inserted (and after missing-password finalize has completed when applicable), the system MUST publish a `UserCreatedEvent` (or equivalent) indicating whether a password was missing at create time. Publishing the event MUST NOT be the sole mechanism that generates or persists the password: missing-password generation/hash/update MUST run through the awaited create finalize path. An optional event subscriber MAY observe the event for audit/logging but MUST NOT re-execute password generation/update for that create.
 
 #### Scenario: Event published after insert without password
 - **WHEN** a user is created without a password
-- **THEN** a user-created event is published with a signal that password is missing
+- **THEN** a user-created event is published with a signal that password is missing (at create intent), after the finalize path has persisted the generated hash
 
 #### Scenario: Event published after insert with password
 - **WHEN** a user is created with a password
 - **THEN** a user-created event is published with a signal that password is not missing
+
+#### Scenario: Event subscriber does not dual-mutate password
+- **WHEN** `UserCreatedEvent` is published after a missing-password create
+- **THEN** password generate/hash/update MUST NOT run a second time solely because of EventBus delivery
 
 ### Requirement: Generate secure password on missing password
 When the user-created flow indicates a missing password, the system MUST generate a cryptographically secure password of at least 16 characters, hash it, and update the user record via the repository port before the create HTTP response is finalized. Password generation/update for create MUST execute through a single awaited application path from the create command (not via dual invoke of the same Nest `@EventsHandler` plus explicit handler call). If the user already has a password hash, the finalize path MUST NOT regenerate or overwrite it. If generation or update fails for a missing-password create, the create request MUST NOT succeed with HTTP 201, and the system MUST compensate so the inserted user is not left as a durable record with a missing password hash (best-effort delete of the created user, or an equivalent failed-state that is not treated as a normal active user).
@@ -102,7 +106,7 @@ Password generation MUST use a cryptographically secure RNG and MUST NOT use nai
 - **THEN** it returns a password of at least 16 characters using the configured charset without naive biased modulo mapping
 
 ### Requirement: Unique user email on create
-The system MUST reject creating a user when another user already exists with the same email (after trim and case-insensitive normalization). The client MUST receive HTTP 409 Conflict and MUST NOT receive secrets.
+The system MUST reject creating a user when another user already exists with the same email (after trim and case-insensitive normalization). The client MUST receive HTTP 409 Conflict and MUST NOT receive secrets. Uniqueness MUST NOT rely solely on a non-atomic check-then-create that allows two concurrent successful creates for the same normalized email; the persistence strategy MUST claim the email under a conflict-detecting write (or equivalent) so at most one user is created for that email under concurrent create attempts.
 
 #### Scenario: Duplicate email returns 409
 - **WHEN** a client creates a user with an email that already belongs to an existing user
@@ -111,4 +115,8 @@ The system MUST reject creating a user when another user already exists with the
 #### Scenario: Distinct emails still create
 - **WHEN** a client creates a user with a new email
 - **THEN** the system responds with HTTP 201 as for a normal successful create
+
+#### Scenario: Concurrent creates same email
+- **WHEN** two create requests for the same normalized email race
+- **THEN** at most one user is persisted for that email and the other request fails with conflict (HTTP 409) or an equivalent client-visible failure that does not leave two active users with that email
 
