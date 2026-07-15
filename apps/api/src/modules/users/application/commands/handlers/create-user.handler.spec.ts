@@ -7,7 +7,7 @@ import {
 } from '../../../domain/errors/user.errors';
 import { PasswordHasherPort } from '../../../domain/ports/password-hasher.port';
 import { UserRepositoryPort } from '../../../domain/ports/user-repository.port';
-import { FinalizeMissingPasswordService } from '../../finalize-missing-password.service';
+import { FinalizeMissingPasswordService } from '../../services/finalize-missing-password.service';
 import { CreateUserCommand } from '../create-user.command';
 import { CreateUserHandler } from './create-user.handler';
 

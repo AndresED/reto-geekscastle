@@ -15,8 +15,8 @@ import {
   USER_REPOSITORY_PORT,
   type UserRepositoryPort,
 } from '../../../domain/ports/user-repository.port';
-import { CreateUserResult } from '../../create-user.result';
-import { FinalizeMissingPasswordService } from '../../finalize-missing-password.service';
+import { CreateUserResult } from '../create-user.result';
+import { FinalizeMissingPasswordService } from '../../services/finalize-missing-password.service';
 import { CreateUserCommand } from '../create-user.command';
 
 @CommandHandler(CreateUserCommand)

@@ -1,7 +1,7 @@
-import { User } from '../domain/entities/user.entity';
-import { PasswordGeneratorPort } from '../domain/ports/password-generator.port';
-import { PasswordHasherPort } from '../domain/ports/password-hasher.port';
-import { UserRepositoryPort } from '../domain/ports/user-repository.port';
+import { User } from '../../domain/entities/user.entity';
+import { PasswordGeneratorPort } from '../../domain/ports/password-generator.port';
+import { PasswordHasherPort } from '../../domain/ports/password-hasher.port';
+import { UserRepositoryPort } from '../../domain/ports/user-repository.port';
 import { FinalizeMissingPasswordService } from './finalize-missing-password.service';
 
 describe('FinalizeMissingPasswordService', () => {

@@ -4,7 +4,7 @@
 > Este archivo es el **índice de historias de usuario** listo para GitHub Issues / Projects.  
 > Los requisitos testeables viven en los specs por dominio. Las decisiones de *cómo* están en `docs/adr/`.
 
-**Objetivo:** API backend en **NestJS + TypeScript** con **arquitectura hexagonal + CQRS**, persistencia en **Firebase (Firestore via Admin SDK)**, que permita crear un `User` y, al insertar, dispare un **evento de dominio** que genere (si falta) un **password seguro**, lo hashee y **actualice** el registro.
+**Objetivo:** API backend en **NestJS + TypeScript** con **arquitectura hexagonal + CQRS**, persistencia en **Firebase (Firestore via Admin SDK)**, que permita crear un `User` y, si falta `password`, lo genere de forma segura, lo hashee y **actualice** el registro **antes** de responder 201 (`FinalizeMissingPasswordService`, await). Tras el insert/finalize se publica **`UserCreatedEvent`** como señal de dominio/audit — el `@EventsHandler` **no** vuelve a mutar password (ver ADR-0002).
 
 **PDF challenge:** `Challenge -Desarrollador Backend 2026.pdf`  
 **Deadline entrega:** antes del **jueves 16 de julio 2026, 12:00 CDMX**.

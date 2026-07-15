@@ -10,6 +10,10 @@ Aceptado
 - `helmet()` en `main.ts`.
 - Generador de password usa rejection sampling (sin bias de modulo).
 
+## Enmienda (2026-07-15 — finalize path, no event handler)
+
+La generación/hash/update cuando falta password corre en **`FinalizeMissingPasswordService`** (await desde `CreateUserHandler`). `UserCreatedAuditHandler` solo audit/log — no muta password. Ver ADR-0002.
+
 ## Fecha
 
 2026-07-15
@@ -50,12 +54,12 @@ La API del reto es demo sin auth de clientes; aun así se aplican controles razo
 
 - Longitud: **16**.
 - Charset: `A–Z`, `a–z`, `0–9`, y un set reducido de símbolos (`!@#$%^&*`).
-- Una sola generación por usuario en el event handler; idempotente si ya hay hash.
+- Una sola generación por usuario en **`FinalizeMissingPasswordService`**; idempotente si ya hay hash.
 
 ### Password proveído por cliente
 
 - Se valida longitud; se hashea; `passwordGenerated=false`.
-- El event handler **no** regenera.
+- El finalize path **no** regenera si ya hay hash.
 
 ### Superficie de ataque aceptada en demo
 

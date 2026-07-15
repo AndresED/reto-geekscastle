@@ -1,25 +1,25 @@
 import { CommandBus, CqrsModule } from '@nestjs/cqrs';
 import { Test, TestingModule } from '@nestjs/testing';
-import { User } from '../domain/entities/user.entity';
+import { User } from '../../domain/entities/user.entity';
 import {
   PASSWORD_GENERATOR_PORT,
   type PasswordGeneratorPort,
-} from '../domain/ports/password-generator.port';
+} from '../../domain/ports/password-generator.port';
 import {
   PASSWORD_HASHER_PORT,
   type PasswordHasherPort,
-} from '../domain/ports/password-hasher.port';
+} from '../../domain/ports/password-hasher.port';
 import {
   USER_REPOSITORY_PORT,
   type UserRepositoryPort,
-} from '../domain/ports/user-repository.port';
-import { BcryptPasswordHasher } from '../infrastructure/crypto/bcrypt-password.hasher';
-import { CryptoPasswordGenerator } from '../infrastructure/crypto/crypto-password.generator';
-import { InMemoryUserRepository } from '../testing/in-memory-user.repository';
-import { CreateUserCommand } from './commands/create-user.command';
-import { CreateUserHandler } from './commands/handlers/create-user.handler';
+} from '../../domain/ports/user-repository.port';
+import { BcryptPasswordHasher } from '../../infrastructure/crypto/bcrypt-password.hasher';
+import { CryptoPasswordGenerator } from '../../infrastructure/crypto/crypto-password.generator';
+import { FinalizeMissingPasswordService } from '../services/finalize-missing-password.service';
+import { InMemoryUserRepository } from '../../test-doubles/in-memory-user.repository';
+import { CreateUserCommand } from './create-user.command';
+import { CreateUserHandler } from './handlers/create-user.handler';
 import { CreateUserResult } from './create-user.result';
-import { FinalizeMissingPasswordService } from './finalize-missing-password.service';
 
 describe('Create user password smoke', () => {
   let moduleRef: TestingModule;

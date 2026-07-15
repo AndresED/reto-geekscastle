@@ -2,7 +2,7 @@ import { User } from '../domain/entities/user.entity';
 import { UserEmailConflictError } from '../domain/errors/user.errors';
 import type { UserRepositoryPort } from '../domain/ports/user-repository.port';
 
-/** Shared test double with email claim map (mirrors Firestore emails collection). */
+/** Fake `UserRepositoryPort` for unit/smoke tests (in-memory users + email claims). */
 export class InMemoryUserRepository implements UserRepositoryPort {
   private readonly store = new Map<string, User>();
   private readonly emails = new Map<string, string>();

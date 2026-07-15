@@ -4,12 +4,13 @@
 
 ### Evaluador
 
-1. [README raíz](../README.md) — setup rápido, curls, tests
-2. [Requisitos e historias US-01 – US-22](./requirements/reto.md) — **deadline: 2026-07-16 12:00 CDMX**
-3. [Infra producto (Firestore + C4)](./infra/README.md) — modelo `users`/`emails`, flujos
-4. [ADRs](./adr/) — decisiones vinculantes (incl. Nx + Terraform lite)
-5. Terraform: [`infra/README.md`](../infra/README.md) (raíz del repo)
-6. Reto original: [`reto.md`](../reto.md)
+1. [README raíz](../README.md) — setup rápido, curls (éxito y errores), tests
+2. **OpenAPI** — con la API arriba: [http://localhost:3000/api/docs](http://localhost:3000/api/docs) (schemas + respuestas 201/400/404/409/429)
+3. [Requisitos e historias US-01 – US-22](./requirements/reto.md) — **deadline: 2026-07-16 12:00 CDMX**
+4. [Infra producto (Firestore + C4)](./infra/README.md) — modelo `users`/`emails`, flujos
+5. [ADRs](./adr/) — decisiones vinculantes (incl. Nx + Terraform lite)
+6. Terraform: [`infra/README.md`](../infra/README.md) (raíz del repo)
+7. Enunciado e historias: [`requirements/reto.md`](./requirements/reto.md) (PDF local: `Challenge -Desarrollador Backend 2026.pdf`, no versionado)
 
 ### Desarrollador
 

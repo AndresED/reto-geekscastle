@@ -23,6 +23,7 @@ Ver [`../../infra/README.md`](../../infra/README.md): `fmt`, `validate`, `plan`.
 Cliente HTTP  →  Nest API (:3000)  →  Firestore Emulator (:8080)
 ```
 
+- Contrato HTTP: Swagger [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 - Setup y curls: [README raíz](../../README.md)
 - Variables: `.env.example` (`FIREBASE_PROJECT_ID`, `FIRESTORE_EMULATOR_HOST`)
 - ADRs: [docs/adr/](../adr/)

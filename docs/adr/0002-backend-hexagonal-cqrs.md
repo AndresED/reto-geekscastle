@@ -75,12 +75,16 @@ modules/users/
 │       ├── password-generator.port.ts
 │       └── password-hasher.port.ts
 ├── application/
-│   ├── commands/create-user.command.ts
-│   ├── commands/handlers/create-user.handler.ts
+│   ├── commands/
+│   │   ├── create-user.command.ts
+│   │   ├── create-user.result.ts
+│   │   └── handlers/create-user.handler.ts
 │   ├── queries/get-user-by-id.query.ts
 │   ├── queries/handlers/get-user-by-id.handler.ts
-│   ├── finalize-missing-password.service.ts
+│   ├── services/finalize-missing-password.service.ts
 │   └── events/handlers/user-created-audit.handler.ts  # log only
+├── test-doubles/
+│   └── in-memory-user.repository.ts                 # fake port (tests only)
 ├── infrastructure/
 │   ├── persistence/firestore-user.repository.ts
 │   ├── crypto/crypto-password.generator.ts

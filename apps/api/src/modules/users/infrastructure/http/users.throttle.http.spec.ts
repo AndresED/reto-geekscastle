@@ -6,7 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { CreateUserHandler } from '../../application/commands/handlers/create-user.handler';
-import { FinalizeMissingPasswordService } from '../../application/finalize-missing-password.service';
+import { FinalizeMissingPasswordService } from '../../application/services/finalize-missing-password.service';
 import { GetUserByIdHandler } from '../../application/queries/handlers/get-user-by-id.handler';
 import {
   PASSWORD_GENERATOR_PORT,
@@ -17,7 +17,7 @@ import {
   type PasswordHasherPort,
 } from '../../domain/ports/password-hasher.port';
 import { USER_REPOSITORY_PORT } from '../../domain/ports/user-repository.port';
-import { InMemoryUserRepository } from '../../testing/in-memory-user.repository';
+import { InMemoryUserRepository } from '../../test-doubles/in-memory-user.repository';
 import { HealthController } from '../../../../shared/health/health.controller';
 import { USERS_WRITE_THROTTLE } from '../../../../shared/config/throttle.constants';
 import { UsersController } from './users.controller';

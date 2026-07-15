@@ -1,17 +1,17 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { UserNotFoundError } from '../domain/errors/user.errors';
+import { UserNotFoundError } from '../../domain/errors/user.errors';
 import {
   PASSWORD_GENERATOR_PORT,
   type PasswordGeneratorPort,
-} from '../domain/ports/password-generator.port';
+} from '../../domain/ports/password-generator.port';
 import {
   PASSWORD_HASHER_PORT,
   type PasswordHasherPort,
-} from '../domain/ports/password-hasher.port';
+} from '../../domain/ports/password-hasher.port';
 import {
   USER_REPOSITORY_PORT,
   type UserRepositoryPort,
-} from '../domain/ports/user-repository.port';
+} from '../../domain/ports/user-repository.port';
 
 /**
  * Request-path finalize for missing-password creates.

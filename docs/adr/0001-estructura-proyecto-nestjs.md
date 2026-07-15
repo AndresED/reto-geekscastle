@@ -9,6 +9,11 @@ Aceptado
 El layout pasa a **Nx workspace lite** con Nest en `apps/api` (señal de stack del proceso de postulación). Ver [ADR-0006](./0006-nx-workspace-lite.md). Terraform lite en `infra/`: [ADR-0007](./0007-terraform-firebase-lite.md).  
 **Deadline de entrega del challenge:** antes del **2026-07-16 12:00 CDMX**.
 
+## Enmienda (2026-07-15 — OpenAPI)
+
+- **Swagger / OpenAPI** en `/api/docs` (`@nestjs/swagger`): schemas de request/response y códigos de error documentados.
+- JSON export: `/api/docs-json`. Ver README raíz.
+
 ## Fecha
 
 2026-07-15
@@ -35,7 +40,7 @@ El reto exige NestJS + TypeScript + Clean Architecture + Firebase. No hay fronte
 | TypeScript | `strict` |
 | Prefijo HTTP | `/api/v1` |
 | Health | `GET /api/v1/health` |
-| Documentación API | Swagger opcional en dev; no bloquea entrega |
+| Documentación API | **Swagger** en `/api/docs` (schemas + errores); ver enmienda OpenAPI |
 | Contenedores | Opcional; no sustituye emulator + README |
 | IaC | Terraform lite en `infra/` (ADR-0007); demo runtime = emulator |
 

@@ -70,6 +70,41 @@ Si falla la generación/persistencia del password tras el insert, el create no r
 
 El **email** es único (trim + lowercase). Un duplicado responde **409 Conflict**. Claim `emails/{email}` + doc `users/{id}` se escriben en la misma **transacción** Firestore (sin claim huérfano si falla el write del user).
 
+### Respuestas de error (curl)
+
+Contrato completo en Swagger. Ejemplos rápidos:
+
+```bash
+# 400 — email inválido
+curl -s -X POST http://localhost:3000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"bad","email":"not-an-email"}'
+
+# 409 — email duplicado (ejecutar dos veces el mismo email)
+curl -s -X POST http://localhost:3000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"dup","email":"dup@example.com"}'
+
+# 404 — usuario inexistente
+curl -s http://localhost:3000/api/v1/users/00000000-0000-0000-0000-000000000000
+
+# 429 — superar 20 POST /users en 1 min (repetir create rápido)
+```
+
+Cuerpos de error: validación → `{ statusCode, message[] }`; dominio → `{ statusCode, code, message }` (`NOT_FOUND`, `CONFLICT`, etc.).
+
+## Troubleshooting
+
+| Síntoma | Causa probable | Qué hacer |
+|---------|----------------|-----------|
+| API no arranca / error Firebase | Falta `.env` o `FIREBASE_PROJECT_ID` | `cp .env.example .env`; debe coincidir con `.firebaserc` (`demo-reto-geekscastle`) |
+| `ECONNREFUSED` / 502 al crear user | Emulator apagado o host/puerto mal | Terminal 1: `firebase emulators:start --only firestore`; `.env`: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` |
+| Puerto 8080 o 3000 en uso | Otro proceso | Cambiar puerto emulator en `firebase.json` y actualizar `.env` / `PORT` |
+| Swagger UI en blanco | CSP estricto | Ya relajado en `main.ts` para `/api/docs`; recargar tras `npm run api:serve` |
+| `GET /health` ok pero writes fallan | Health no prueba Firestore | Verificar emulator UI en `:4000` y logs de la API |
+
+**Nota:** `firestore.rules` incluye una regla abierta temporal (expira 2026-08-14) generada por Firebase CLI para demo local. La API usa **Admin SDK** (backend); no depende de reglas de cliente para el flujo del reto.
+
 ## Tests
 
 ```bash
