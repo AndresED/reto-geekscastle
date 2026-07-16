@@ -11,7 +11,7 @@ describe('Health (e2e)', () => {
   beforeAll(async () => {
     process.env.PORT = '3000';
     process.env.FIREBASE_PROJECT_ID = 'demo-reto-geekscastle';
-    process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+    process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8085';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

@@ -19,7 +19,7 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   FIREBASE_PROJECT_ID!: string;
 
-  /** Host:port for Firestore emulator (e.g. 127.0.0.1:8080). Empty = production Admin SDK. */
+  /** Host:port for Firestore emulator (e.g. 127.0.0.1:8085). Empty = production Admin SDK. */
   @IsOptional()
   @IsString()
   FIRESTORE_EMULATOR_HOST?: string;

@@ -196,8 +196,8 @@ Terraform: ver [`infra/README.md`](./infra/README.md). La demo del challenge es 
 | Síntoma | Causa probable | Qué hacer |
 |---------|----------------|-----------|
 | La API no arranca / error Firebase | Falta `.env` o project id | `cp .env.example .env`; debe cuadrar con `.firebaserc` (`demo-reto-geekscastle`) |
-| `ECONNREFUSED` / 502 al crear | Emulator apagado | Terminal 1 con `firebase emulators:start --only firestore`; `.env`: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` |
-| Puerto 8080 o 3000 ocupado | Otro proceso | Cambia puerto en `firebase.json` / `PORT` |
+| `ECONNREFUSED` / 502 al crear | Emulator apagado | Terminal 1 con `firebase emulators:start --only firestore`; `.env`: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8085` |
+| Puerto 8085 o 3000 ocupado | Otro proceso (p. ej. Docker en 8080) | Cambia puerto en `firebase.json` / `PORT` |
 | Swagger en blanco | CSP | Ya relajado en `main.ts` para `/api/docs`; recarga tras `npm run api:serve` |
 | Health ok pero el create falla | Health no prueba Firestore | Mira la UI del emulator (`:4000`) y los logs de la API |
 
@@ -221,7 +221,7 @@ Cliente → Cloud Run (Nest) → Firestore
 
 | | Local (lo entregado) | GCP |
 |--|----------------------|-----|
-| Datos | Emulator `:8080` | Firestore del proyecto |
+| Datos | Emulator `:8085` | Firestore del proyecto |
 | Auth Admin SDK | `FIRESTORE_EMULATOR_HOST` | Cuenta de servicio de Cloud Run (ADC) |
 | Evento | `EventBus` en el mismo proceso | Mensaje Pub/Sub **después** del password listo |
 | Secretos | Fuera de Git | Secret Manager / IAM |

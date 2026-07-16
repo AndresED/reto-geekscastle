@@ -15,7 +15,7 @@ El Terraform (código) vive en la raíz: [`infra/`](../../infra/README.md).
 ## Cómo corre en local
 
 ```text
-Tu cliente HTTP  →  Nest (:3000)  →  Firestore Emulator (:8080)
+Tu cliente HTTP  →  Nest (:3000)  →  Firestore Emulator (:8085)
 ```
 
 - Swagger: http://localhost:3000/api/docs  

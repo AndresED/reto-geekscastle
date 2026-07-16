@@ -6,7 +6,7 @@ describe('validateEnv', () => {
     const env = validateEnv({
       PORT: '3000',
       FIREBASE_PROJECT_ID: 'demo-reto',
-      FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:8085',
     });
     expect(env.PORT).toBe(3000);
     expect(env.FIREBASE_PROJECT_ID).toBe('demo-reto');

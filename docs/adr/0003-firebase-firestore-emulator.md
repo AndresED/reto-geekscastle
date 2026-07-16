@@ -40,7 +40,7 @@ No exige Firebase Authentication como IdP ni Cloud Functions.
 3. Antes de `admin.initializeApp()`, setear:
 
 ```bash
-FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8085
 GCLOUD_PROJECT=demo-reto-geekscastle
 ```
 

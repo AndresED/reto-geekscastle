@@ -59,6 +59,6 @@ Si falla el finalize del password y compensamos, borramos el user **y** su claim
 ## Emulator
 
 Ver el README raíz. Proyecto típico de demo: `demo-reto-geekscastle` con  
-`FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`.
+`FIRESTORE_EMULATOR_HOST=127.0.0.1:8085`.
 
 Más contexto: [ADR-0003](../adr/0003-firebase-firestore-emulator.md) · [wiki arquitectura](../wiki/arquitectura.md).
