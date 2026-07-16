@@ -41,30 +41,23 @@ export class CreateUserHandler
       command.password.trim() === '';
 
     const id = randomUUID();
-    const emailProbe = User.create({
+    let user = User.create({
       id,
       username: command.username,
       email: command.email,
       passwordHash: null,
-    });
-
-    const existing = await this.users.findByEmail(emailProbe.email);
-    if (existing) {
-      throw new UserEmailConflictError(emailProbe.email);
-    }
-
-    let passwordHash: string | null = null;
-    if (!passwordMissing) {
-      passwordHash = await this.hasher.hash(command.password!.trim());
-    }
-
-    const user = User.create({
-      id,
-      username: command.username,
-      email: command.email,
-      passwordHash,
       passwordGenerated: false,
     });
+
+    const existing = await this.users.findByEmail(user.email);
+    if (existing) {
+      throw new UserEmailConflictError(user.email);
+    }
+
+    if (!passwordMissing) {
+      const passwordHash = await this.hasher.hash(command.password!.trim());
+      user = user.withPasswordHash(passwordHash, false);
+    }
 
     const created = await this.users.create(user);
 
