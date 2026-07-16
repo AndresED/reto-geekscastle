@@ -1,4 +1,4 @@
-# ADR-0007: Terraform lite para Firebase (IaC demostrable)
+# ADR-0007: Terraform lite para Firebase
 
 ## Estado
 
@@ -10,12 +10,12 @@ Aceptado
 
 ## Alcance
 
-Cómo demostrar **Terraform** alineado al reto Firebase, sin exigir `terraform apply` en cloud al evaluador.
+Cómo mostramos **Terraform** en el repo sin obligar al evaluador a hacer `terraform apply` en la nube.
 
 ## Contexto
 
-El PDF se evalúa con Nest + Firebase (emulator válido). El proceso de postulación pidió experiencia en **Terraform**.  
-Deadline: **2026-07-16 12:00 CDMX** — no hay margen para un landing zone GCP completo.
+El PDF se evalúa con Nest + Firebase (con el emulador alcanza). En el proceso también pidieron experiencia con **Terraform**.  
+Fecha límite: **2026-07-16 12:00 CDMX** — no da para armar toda una plataforma en GCP.
 
 ## Elección final
 
@@ -31,7 +31,8 @@ Deadline: **2026-07-16 12:00 CDMX** — no hay margen para un landing zone GCP c
 
 ## Decisión
 
-Incluir un módulo Terraform **documentado y validable** que describe la infra cloud “si se desplegara de verdad”. El camino feliz del challenge sigue siendo **Firestore Emulator + Admin SDK**.
+Metemos un Terraform **documentado y que pase `validate`**, que describe la infra cloud “si un día se desplegara de verdad”.  
+Para el challenge, el camino feliz sigue siendo **emulador de Firestore + Admin SDK**.
 
 ```
 infra/
@@ -53,20 +54,20 @@ infra/
 
 ### A. Sin Terraform
 
-Cumple PDF; ignora señal del proceso. **Descartada.**
+Cumple el PDF, pero no muestra Terraform. **Descartada.**
 
 ### B. Terraform full (Cloud Run + LB + Secret Manager + CI apply)
 
 Sobre-ingeniería vs deadline. **Descartada v1.**
 
-### C. Terraform lite + emulator como runtime demo (elegida)
+### C. Terraform pequeño + emulador para la demo (elegida)
 
-Señal IaC + entrega del desafio intacta.
+Se ve Terraform en el repo y la entrega del reto no se complica.
 
 ## Consecuencias
 
-- README distingue: *run challenge* (emulator) vs *provision cloud* (terraform plan).
-- US-22 en requisitos cubre artefactos `infra/`.
+- El README separa: correr el reto (emulador) vs mirar el plan cloud (`terraform plan`).
+- La historia US-22 cubre lo que hay en `infra/`.
 
 ## Criterios de aceptación
 

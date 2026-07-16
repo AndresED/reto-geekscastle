@@ -17,7 +17,7 @@ No son tutoriales; si quieres la explicación con calma, ve a la [wiki](../wiki/
 | [0004](./0004-ci-github-actions.md) | CI con GitHub Actions | Pipeline: build + `test:cov` (≥ 80 %) y validate de Terraform; sin deploy cloud en v1. |
 | [0005](./0005-seguridad-passwords-y-api.md) | Seguridad: passwords y API | Generación CSPRNG, bcrypt, sin plaintext, validación, Helmet y throttle 20/min (health exento). |
 | [0006](./0006-nx-workspace-lite.md) | Nx workspace lite | Monorepo mínimo con proyecto `api` para mostrar Nx sin inventar libs/FE de más. |
-| [0007](./0007-terraform-firebase-lite.md) | Terraform lite para Firebase | IaC acotada para Firestore en GCP; la demo del challenge sigue siendo el emulador. |
+| [0007](./0007-terraform-firebase-lite.md) | Terraform para Firebase | Un Terraform pequeño para Firestore en GCP; para demostrar el reto usas el emulador. |
 
 ---
 

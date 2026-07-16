@@ -1,24 +1,27 @@
-# Terraform lite — Firebase / Firestore
+# Terraform (Firebase / Firestore)
 
-IaC chica para dejar Firestore listo en un proyecto GCP (la señal de Terraform del proceso).
+Esta carpeta tiene un Terraform **chico**: sirve para dejar Firestore preparado en un proyecto de Google Cloud.
 
-## Demo del challenge
+En la postulación pidieron Terraform. Aquí está, sin inventar media nube solo para lucir.
 
-Lo que se evalúa corre contra el **emulador de Firestore** (ver README raíz).  
-**No** hace falta `terraform apply` para demostrar el reto.
+## Para evaluar el reto
 
-## Uso
+La demo que importa corre con el **emulador de Firestore**.  
+Mira el README de la raíz del repo. **No** necesitas hacer `terraform apply` para probar la API.
+
+## Cómo usarlo (si quieres ver el plan)
 
 ```bash
 cd infra
-cp terraform.tfvars.example terraform.tfvars   # edita project_id
+cp terraform.tfvars.example terraform.tfvars   # pon tu project_id
 terraform init
 terraform fmt -check
 terraform validate
 terraform plan
 ```
 
-- No subas `*.tfvars`, `*.tfstate` ni credenciales.
-- Aplicar en cloud es opcional y queda fuera de la demo.
+- No subas `*.tfvars`, `*.tfstate` ni credenciales al git.
+- Subir esto a la nube de verdad es opcional y no forma parte de la demo.
 
-Más contexto de producto: [docs/infra](../docs/infra/README.md) · [ADR-0007](../docs/adr/0007-terraform-firebase-lite.md).
+Si quieres el modelo de datos y los diagramas: [docs/infra](../docs/infra/README.md).  
+La decisión escrita: [ADR-0007](../docs/adr/0007-terraform-firebase-lite.md).
